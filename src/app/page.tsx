@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getCurrentStaff } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export default async function RootPage() {
   const staff = await getCurrentStaff();
 
