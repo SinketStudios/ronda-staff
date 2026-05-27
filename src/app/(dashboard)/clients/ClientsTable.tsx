@@ -1,0 +1,249 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import type { StaffClient } from '@/lib/api';
+
+const statusLabel: Record<StaffClient['paymentStatus'], string> = {
+  not_configured: 'Sin configurar',
+  pending: 'Pendiente',
+  active: 'Activo',
+  restricted: 'Restringido',
+};
+
+const statusClass: Record<StaffClient['paymentStatus'], string> = {
+  not_configured: 'bg-ronda-bg text-ronda-muted',
+  pending: 'bg-ronda-gold/10 text-ronda-gold-dark',
+  active: 'bg-ronda-success/10 text-ronda-success',
+  restricted: 'bg-red-50 text-ronda-error',
+};
+
+const subscriptionStatus: Record<string, { label: string; className: string }> = {
+  active: { label: 'Activo', className: 'bg-ronda-success/10 text-ronda-success' },
+  trialing: { label: 'Prueba', className: 'bg-ronda-gold/10 text-ronda-gold-dark' },
+  incomplete: { label: 'Pendiente de pago', className: 'bg-ronda-gold/10 text-ronda-gold-dark' },
+  incomplete_expired: { label: 'Pago expirado', className: 'bg-red-50 text-ronda-error' },
+  past_due: { label: 'Pago fallido', className: 'bg-red-50 text-ronda-error' },
+  unpaid: { label: 'Impagado', className: 'bg-red-50 text-ronda-error' },
+  canceled: { label: 'Cancelado', className: 'bg-ronda-bg text-ronda-muted' },
+  paused: { label: 'Pausado', className: 'bg-ronda-bg text-ronda-muted' },
+};
+
+function formatSubscriptionStatus(status: string | null) {
+  return status
+    ? subscriptionStatus[status] ?? { label: status, className: 'bg-ronda-bg text-ronda-muted' }
+    : { label: 'Sin suscripcion', className: 'bg-ronda-bg text-ronda-muted' };
+}
+
+function formatPlan(client: StaffClient) {
+  const subscription = client.subscription;
+  const suffix = subscription.billingCycle === 'annual' ? 'anual' : subscription.billingCycle === 'monthly' ? 'mensual' : 'sin ciclo';
+  const price = subscription.amountCents
+    ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: (subscription.currency || 'eur').toUpperCase() }).format(subscription.amountCents / 100)
+    : '-';
+
+  return {
+    name: subscription.planName || 'Sin plan',
+    price,
+    cycle: suffix,
+    source: subscription.source === 'stripe' ? 'Stripe' : 'DB',
+  };
+}
+
+interface ClientsTableProps {
+  clients: StaffClient[];
+  onSelectClient: (client: StaffClient) => void;
+}
+
+export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
+  const router = useRouter();
+  const [query, setQuery] = useState('');
+  const [planStatus, setPlanStatus] = useState('all');
+  const [paymentStatus, setPaymentStatus] = useState('all');
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+
+  const filtered = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return clients.filter((client) => {
+      const matchesQuery = !normalizedQuery || [
+        client.name,
+        client.legalName,
+        client.taxId,
+        client.email,
+        client.owner.name,
+        client.owner.email,
+      ].some((value) => value?.toLowerCase().includes(normalizedQuery));
+
+      const matchesPlanStatus = planStatus === 'all' || client.subscription.status === planStatus;
+      const matchesPaymentStatus = paymentStatus === 'all' || client.paymentStatus === paymentStatus;
+
+      return matchesQuery && matchesPlanStatus && matchesPaymentStatus;
+    });
+  }, [clients, paymentStatus, planStatus, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  function updateFilter(action: () => void) {
+    action();
+    setPage(1);
+  }
+
+  return (
+    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden">
+      {/* Filters Block - No background, white inputs */}
+      <div className="flex shrink-0 flex-wrap items-end gap-3">
+        <label className="grid min-w-72 flex-1 gap-1.5 text-xs font-semibold uppercase text-ronda-muted">
+          Buscar
+          <input
+            value={query}
+            onChange={(event) => updateFilter(() => setQuery(event.target.value))}
+            placeholder="Organizacion, propietario, email..."
+            className="min-h-10 rounded-lg bg-ronda-surface px-3 text-sm font-medium normal-case text-ronda-text outline-none border border-ronda-border placeholder:text-ronda-muted/60 transition focus:ring-2 focus:ring-ronda-gold focus:border-ronda-gold"
+          />
+        </label>
+
+        <label className="grid gap-1.5 text-xs font-semibold uppercase text-ronda-muted">
+          Estado plan
+          <select
+            value={planStatus}
+            onChange={(event) => updateFilter(() => setPlanStatus(event.target.value))}
+            className="min-h-10 rounded-lg bg-ronda-surface px-3 text-sm font-medium normal-case text-ronda-text outline-none border border-ronda-border transition focus:ring-2 focus:ring-ronda-gold focus:border-ronda-gold"
+          >
+            <option value="all">Todos</option>
+            <option value="active">Activo</option>
+            <option value="trialing">Prueba</option>
+            <option value="incomplete">Pendiente pago</option>
+            <option value="past_due">Pago fallido</option>
+            <option value="unpaid">Impagado</option>
+            <option value="canceled">Cancelado</option>
+          </select>
+        </label>
+
+        <label className="grid gap-1.5 text-xs font-semibold uppercase text-ronda-muted">
+          Cobros
+          <select
+            value={paymentStatus}
+            onChange={(event) => updateFilter(() => setPaymentStatus(event.target.value))}
+            className="min-h-10 rounded-lg bg-ronda-surface px-3 text-sm font-medium normal-case text-ronda-text outline-none border border-ronda-border transition focus:ring-2 focus:ring-ronda-gold focus:border-ronda-gold"
+          >
+            <option value="all">Todos</option>
+            <option value="not_configured">Sin configurar</option>
+            <option value="pending">Pendiente</option>
+            <option value="active">Activo</option>
+            <option value="restricted">Restringido</option>
+          </select>
+        </label>
+
+        <label className="grid gap-1.5 text-xs font-semibold uppercase text-ronda-muted">
+          Mostrar
+          <select
+            value={pageSize}
+            onChange={(event) => updateFilter(() => setPageSize(Number(event.target.value)))}
+            className="min-h-10 rounded-lg bg-ronda-surface px-3 text-sm font-medium normal-case text-ronda-text outline-none border border-ronda-border transition focus:ring-2 focus:ring-ronda-gold focus:border-ronda-gold"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </label>
+
+        <button
+          type="button"
+          onClick={() => router.refresh()}
+          className="min-h-10 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark"
+        >
+          Actualizar
+        </button>
+      </div>
+
+      {/* Table Block - Border, white background, rounded, internal scroll */}
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface">
+        <div className="grid shrink-0 grid-cols-[1.25fr_1fr_0.95fr_0.75fr_1fr_6rem] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
+          <span>Organizacion</span>
+          <span>Suscripcion</span>
+          <span>Estado plan</span>
+          <span>Cobros</span>
+          <span>Propietario</span>
+          <span className="text-right">Locales</span>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto">
+          {pageItems.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-ronda-muted">No hay clientes que coincidan con los filtros.</div>
+          ) : (
+            <div className="divide-y divide-ronda-border">
+              {pageItems.map((client) => {
+                const plan = formatPlan(client);
+                const planStatusData = formatSubscriptionStatus(client.subscription.status);
+
+                return (
+                  <button
+                    key={client.id}
+                    onClick={() => onSelectClient(client)}
+                    className="grid grid-cols-[1.25fr_1fr_0.95fr_0.75fr_1fr_6rem] items-center gap-4 px-4 py-4 text-sm transition hover:bg-ronda-bg/60 bg-ronda-surface text-left w-full border-none cursor-pointer"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-ronda-text">{client.name}</p>
+                      <p className="truncate text-xs text-ronda-muted">{client.legalName || client.taxId || client.email || 'Sin datos fiscales'}</p>
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-ronda-text">{plan.name}</p>
+                      <p className="truncate text-xs text-ronda-muted">{plan.price} - {plan.cycle} - {plan.source}</p>
+                    </div>
+
+                    <span className={`w-fit rounded-lg px-2.5 py-1 text-xs font-semibold ${planStatusData.className}`}>
+                      {planStatusData.label}
+                    </span>
+
+                    <span className={`w-fit rounded-lg px-2.5 py-1 text-xs font-semibold ${statusClass[client.paymentStatus]}`}>
+                      {statusLabel[client.paymentStatus]}
+                    </span>
+
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ronda-text">{client.owner.name}</p>
+                      <p className="truncate text-xs text-ronda-muted">{client.owner.email}</p>
+                    </div>
+
+                    <p className="text-right font-semibold text-ronda-coffee">{client.restaurantsCount}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Pagination Block - No background, white input buttons */}
+      <div className="flex shrink-0 items-center justify-between gap-4 text-sm text-ronda-muted">
+        <p>
+          {filtered.length === 0 ? '0 clientes' : `${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filtered.length)} de ${filtered.length}`}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((value) => Math.max(1, value - 1))}
+            disabled={currentPage === 1}
+            className="min-h-9 rounded-lg bg-ronda-surface border border-ronda-border px-3 font-semibold text-ronda-coffee transition hover:bg-ronda-surface-soft disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Anterior
+          </button>
+          <span className="min-w-20 text-center font-semibold text-ronda-text">{currentPage} / {totalPages}</span>
+          <button
+            type="button"
+            onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+            disabled={currentPage === totalPages}
+            className="min-h-9 rounded-lg bg-ronda-surface border border-ronda-border px-3 font-semibold text-ronda-coffee transition hover:bg-ronda-surface-soft disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

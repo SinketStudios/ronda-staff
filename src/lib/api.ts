@@ -1,0 +1,340 @@
+const API_URL = typeof window !== 'undefined'
+  ? `${window.location.protocol}//${window.location.hostname}:5000`
+  : 'http://localhost:5000';
+
+async function getServerCookieHeader(): Promise<string | undefined> {
+  if (typeof window !== 'undefined') return undefined;
+  const { cookies } = await import('next/headers');
+  const session = (await cookies()).get('ronda_staff_session')?.value;
+  return session ? `ronda_staff_session=${encodeURIComponent(session)}` : undefined;
+}
+
+export interface StaffMember {
+  id: string;
+  employeeCode: string;
+  name: string;
+  role: string;
+}
+
+export interface StaffEmployee {
+  id: string;
+  employeeCode: string;
+  name: string;
+  role: string;
+  email?: string;
+  personalEmail?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type StaffClient = {
+  id: string;
+  name: string;
+  legalName: string | null;
+  taxId: string | null;
+  email: string | null;
+  phone: string | null;
+  country: string | null;
+  paymentStatus: 'not_configured' | 'pending' | 'active' | 'restricted';
+  createdAt: string;
+  owner: {
+    id: string;
+    name: string;
+    email: string;
+    subscriptionStatus: string | null;
+    currentPlanId: string | null;
+    currentBillingCycle: string | null;
+  };
+  subscription: {
+    source: 'stripe' | 'database';
+    status: string | null;
+    planId: string | null;
+    planName: string | null;
+    billingCycle: string | null;
+    amountCents: number | null;
+    currency: string | null;
+  };
+  restaurantsCount: number;
+  primaryRestaurant: {
+    id: string;
+    name: string;
+    city: string | null;
+    portalSubdomain: string;
+    paymentStatus: 'not_configured' | 'pending' | 'active' | 'restricted';
+    onboardingCompleted: boolean;
+    createdAt: string;
+  } | null;
+  restaurants?: Array<{
+    id: string;
+    name: string;
+    city: string | null;
+    portalSubdomain: string;
+    paymentStatus: 'not_configured' | 'pending' | 'active' | 'restricted';
+    onboardingCompleted: boolean;
+    createdAt: string;
+  }>;
+};
+
+export async function loginStaff(employeeCode: string, password: string): Promise<StaffMember> {
+  try {
+    const res = await fetch(`${API_URL}/staff/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ employeeCode, password }),
+    });
+
+    console.log('Login response status:', res.status);
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.message || `Login failed with status ${res.status}`);
+    }
+
+    const data = await res.json();
+    console.log('Login successful, staff:', data.staff);
+    return data.staff;
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
+  }
+}
+
+export async function logoutStaff(): Promise<void> {
+  try {
+    const cookieHeader = await getServerCookieHeader();
+    await fetch(`${API_URL}/staff/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+}
+
+export async function getStaffMe(): Promise<StaffMember | null> {
+  try {
+    const cookieHeader = await getServerCookieHeader();
+    const res = await fetch(`${API_URL}/staff/auth/me`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error('Get staff me error:', error);
+    return null;
+  }
+}
+
+export async function getStaffClients(): Promise<StaffClient[]> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/clients`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudieron cargar los clientes${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function getStaffClient(clientId: string): Promise<StaffClient> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/clients/${clientId}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudo cargar el cliente${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function getStaffEmployees(): Promise<StaffEmployee[]> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/employees`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudieron cargar los empleados${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function getStaffEmployee(employeeId: string): Promise<StaffEmployee> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/employees/${employeeId}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudo cargar el empleado${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function createStaffEmployee(input: {
+  employeeCode: string;
+  name: string;
+  email?: string;
+  personalEmail?: string;
+  role: string;
+  password: string;
+  isActive?: boolean;
+}): Promise<{ employee: StaffEmployee; setupLink: string | null }> {
+  const res = await fetch(`${API_URL}/staff/employees`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo crear el empleado (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function setupStaffAccount(token: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_URL}/staff/auth/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `Error al configurar la cuenta (${res.status})`);
+  }
+}
+
+export interface AuditLogEntry {
+  id: string;
+  staffMemberId: string | null;
+  staffMember: { id: string; name: string; employeeCode: string; role: string } | null;
+  method: string;
+  action: string;
+  endpoint: string;
+  requestBody: Record<string, unknown> | null;
+  responseStatus: number;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogResponse {
+  data: AuditLogEntry[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export async function getAuditLogs(params?: {
+  staffMemberId?: string;
+  action?: string;
+  endpoint?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AuditLogResponse> {
+  const cookieHeader = await getServerCookieHeader();
+
+  const qs = params
+    ? '?' +
+      new URLSearchParams(
+        Object.entries(params)
+          .filter(([, v]) => v != null)
+          .map(([k, v]) => [k, String(v)]),
+      ).toString()
+    : '';
+
+  const res = await fetch(`${API_URL}/internal/audit-logs${qs}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch audit logs: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  description: string;
+  subject: string;
+}
+
+export interface EmailTemplateDetail extends EmailTemplate {
+  html: string;
+  text: string;
+}
+
+export async function getEmailTemplates(): Promise<EmailTemplate[]> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/templates`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch email templates: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function getEmailTemplate(id: string): Promise<EmailTemplateDetail> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/templates/${id}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch email template: ${res.status}`);
+  }
+
+  return res.json();
+}

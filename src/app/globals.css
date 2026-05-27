@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --ronda-bg: #faf7f0;
+  --ronda-surface: #ffffff;
+  --ronda-surface-soft: #f3ebdd;
+  --ronda-text: #17140f;
+  --ronda-muted: #756e63;
+  --ronda-border: #e3d7c5;
+  --ronda-gold: #b98a41;
+  --ronda-gold-dark: #8a642c;
+  --ronda-coffee: #3a2618;
+  --ronda-terracotta: #b9653b;
+  --ronda-olive: #5f6f52;
+  --ronda-success: #3f7a56;
+  --ronda-error: #b84a3a;
+  --ronda-logo: #24160c;
+}
+
+@theme inline {
+  --color-ronda-bg: var(--ronda-bg);
+  --color-ronda-surface: var(--ronda-surface);
+  --color-ronda-surface-soft: var(--ronda-surface-soft);
+  --color-ronda-text: var(--ronda-text);
+  --color-ronda-muted: var(--ronda-muted);
+  --color-ronda-border: var(--ronda-border);
+  --color-ronda-gold: var(--ronda-gold);
+  --color-ronda-gold-dark: var(--ronda-gold-dark);
+  --color-ronda-coffee: var(--ronda-coffee);
+  --color-ronda-terracotta: var(--ronda-terracotta);
+  --color-ronda-olive: var(--ronda-olive);
+  --color-ronda-success: var(--ronda-success);
+  --color-ronda-error: var(--ronda-error);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ronda-bg);
+  color: var(--ronda-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a {
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:not(:disabled),
+a[href],
+select,
+[role="button"] {
+  cursor: pointer;
+}
