@@ -36,8 +36,10 @@ export default async function DashboardLayout({
           <form
             action={async () => {
               'use server';
+              const { cookies } = await import('next/headers');
               const { logoutStaff } = await import('@/lib/api');
               await logoutStaff();
+              (await cookies()).delete('ronda_staff_session');
               redirect('/login');
             }}
           >
