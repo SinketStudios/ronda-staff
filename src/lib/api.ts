@@ -252,6 +252,8 @@ export async function createStaffEmployee(input: {
   role: string;
   password: string;
   isActive?: boolean;
+  iban?: string;
+  bankHolder?: string;
 }): Promise<{ employee: StaffEmployee; setupLink: string | null }> {
   const res = await fetch(`${API_URL}/staff/employees`, {
     method: 'POST',
