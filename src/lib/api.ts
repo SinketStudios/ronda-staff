@@ -225,6 +225,8 @@ export async function updateStaffEmployee(
     personalEmail?: string;
     role?: string;
     isActive?: boolean;
+    iban?: string;
+    bankHolder?: string;
   },
 ): Promise<StaffEmployee> {
   const res = await fetch(`${API_URL}/staff/employees/${id}`, {
