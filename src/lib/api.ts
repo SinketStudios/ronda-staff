@@ -24,6 +24,8 @@ export interface StaffEmployee {
   email?: string;
   personalEmail?: string;
   isActive: boolean;
+  iban?: string;
+  bankHolder?: string;
   createdAt: string;
 }
 
@@ -202,6 +204,44 @@ export async function getStaffEmployee(employeeId: string): Promise<StaffEmploye
   return res.json();
 }
 
+export async function sendEmployeeTestEmail(id: string): Promise<{ sent: boolean; to: string }> {
+  const res = await fetch(`${API_URL}/staff/employees/${id}/send-test-email`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `Error al enviar el correo (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function updateStaffEmployee(
+  id: string,
+  input: {
+    name?: string;
+    personalEmail?: string;
+    role?: string;
+    isActive?: boolean;
+  },
+): Promise<StaffEmployee> {
+  const res = await fetch(`${API_URL}/staff/employees/${id}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo actualizar el empleado (${res.status})`);
+  }
+
+  return res.json();
+}
+
 export async function createStaffEmployee(input: {
   employeeCode: string;
   name: string;
@@ -221,6 +261,58 @@ export async function createStaffEmployee(input: {
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.message || `No se pudo crear el empleado (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function requestPasswordRecovery(employeeCode: string): Promise<void> {
+  const res = await fetch(`${API_URL}/staff/auth/recovery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employeeCode }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `Error al enviar el correo (${res.status})`);
+  }
+}
+
+export async function getPasswordResetInfo(token: string): Promise<{ name: string; employeeCode: string }> {
+  const res = await fetch(`${API_URL}/staff/auth/password?token=${encodeURIComponent(token)}`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || 'Token inválido o expirado');
+  }
+
+  return res.json();
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_URL}/staff/auth/password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `Error al restablecer la contraseña (${res.status})`);
+  }
+}
+
+export async function getSetupInfo(token: string): Promise<{ name: string; employeeCode: string }> {
+  const res = await fetch(`${API_URL}/staff/auth/setup?token=${encodeURIComponent(token)}`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || 'Token inválido o expirado');
   }
 
   return res.json();

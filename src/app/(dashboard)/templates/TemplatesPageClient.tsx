@@ -26,6 +26,12 @@ export function TemplatesPageClient({ templates }: TemplatesPageClientProps) {
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
+  function inertHtml(html: string) {
+    return html.includes('<head>')
+      ? html.replace('<head>', '<head><base target="_blank">')
+      : `<base target="_blank">${html}`;
+  }
+
   return (
     <div className="flex h-full flex-col gap-5 overflow-hidden">
       {/* Header */}
@@ -90,18 +96,17 @@ export function TemplatesPageClient({ templates }: TemplatesPageClientProps) {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto bg-ronda-bg p-4">
+              <div className="min-h-0 flex-1 overflow-auto bg-ronda-bg">
                 {loading ? (
                   <div className="flex items-center justify-center h-full text-ronda-muted">
                     Cargando...
                   </div>
                 ) : templateDetail ? (
-                  <div className={`mx-auto ${isDesktop ? 'w-full' : 'w-[390px]'}`}>
+                  <div className={`mx-auto h-full ${isDesktop ? 'w-full' : 'w-[390px]'}`}>
                     <iframe
-                      srcDoc={templateDetail.html}
-                      className="w-full border-0 rounded-lg"
-                      style={{ height: '600px' }}
-                      sandbox="allow-same-origin"
+                      srcDoc={inertHtml(templateDetail.html)}
+                      className="w-full h-full border-0"
+                      sandbox=""
                     />
                   </div>
                 ) : (
