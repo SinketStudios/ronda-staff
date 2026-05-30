@@ -69,10 +69,10 @@ export function NewEmployeeClient() {
 
   if (setupLink !== null) {
     return (
-      <div className="flex h-full flex-col gap-5 overflow-hidden">
-        <header className="flex shrink-0 items-start justify-between gap-4">
+      <div className="flex min-h-full flex-col gap-5 lg:h-full lg:overflow-hidden">
+        <header className="grid shrink-0 gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
           <div>
-            <h1 className="text-3xl font-semibold text-ronda-text">Empleado creado</h1>
+            <h1 className="text-2xl font-semibold text-ronda-text sm:text-3xl">Empleado creado</h1>
             <p className="mt-2 text-sm text-ronda-muted">El empleado ha sido creado exitosamente.</p>
           </div>
           <button
@@ -86,17 +86,17 @@ export function NewEmployeeClient() {
 
         <div className="min-h-0 flex-1 overflow-auto">
           {setupLink ? (
-            <div className="rounded-lg border border-ronda-border bg-ronda-surface p-6">
+            <div className="rounded-lg border border-ronda-border bg-ronda-surface p-4 sm:p-6">
               <h2 className="mb-3 text-lg font-semibold text-ronda-text">Enlace de activación</h2>
               <p className="mb-4 text-sm text-ronda-muted">
                 No se pudo enviar el email. Comparte este enlace manualmente con el empleado. Expira en 48 horas.
               </p>
-              <div className="flex gap-2">
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <input
                   type="text"
                   readOnly
                   value={setupLink}
-                  className="flex-1 rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text outline-none"
+                  className="min-w-0 rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text outline-none"
                 />
                 <button
                   type="button"
@@ -108,7 +108,7 @@ export function NewEmployeeClient() {
               </div>
             </div>
           ) : (
-            <div className="rounded-lg border border-ronda-border bg-ronda-surface p-6">
+            <div className="rounded-lg border border-ronda-border bg-ronda-surface p-4 sm:p-6">
               <h2 className="mb-2 text-lg font-semibold text-ronda-text">Email enviado</h2>
               <p className="text-sm text-ronda-muted">
                 Se ha enviado el enlace de activación a <span className="font-semibold">{form.personalEmail}</span>.
@@ -121,13 +121,13 @@ export function NewEmployeeClient() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-5 overflow-hidden">
-      <header className="flex shrink-0 items-start justify-between gap-4">
+    <div className="flex min-h-full flex-col gap-5 lg:h-full lg:overflow-hidden">
+      <header className="grid shrink-0 gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
         <div>
-          <h1 className="text-3xl font-semibold text-ronda-text">Nuevo empleado</h1>
+          <h1 className="text-2xl font-semibold text-ronda-text sm:text-3xl">Nuevo empleado</h1>
           <p className="mt-2 text-sm text-ronda-muted">Crea un nuevo miembro del equipo de Ronda.</p>
         </div>
-        <div className="flex shrink-0 gap-3">
+        <div className="hidden shrink-0 gap-3 sm:flex">
           <button
             type="button"
             onClick={() => router.back()}
@@ -149,12 +149,12 @@ export function NewEmployeeClient() {
       <form
         id="new-employee-form"
         onSubmit={handleSubmit}
-        className="min-h-0 flex-1 overflow-auto rounded-lg border border-ronda-border bg-ronda-surface"
+        className="min-h-0 flex-1 overflow-auto rounded-lg border border-ronda-border bg-ronda-surface pb-24 sm:pb-0"
       >
         <div className="divide-y divide-ronda-border">
 
           {/* Información personal */}
-          <div className="grid grid-cols-[220px_1fr] gap-8 p-6">
+          <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[220px_1fr] lg:gap-8">
             <div>
               <h2 className="text-sm font-semibold text-ronda-text">Información personal</h2>
               <p className="mt-1 text-xs text-ronda-muted">Datos de identificación del empleado.</p>
@@ -189,7 +189,7 @@ export function NewEmployeeClient() {
           </div>
 
           {/* Información laboral */}
-          <div className="grid grid-cols-[220px_1fr] gap-8 p-6">
+          <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[220px_1fr] lg:gap-8">
             <div>
               <h2 className="text-sm font-semibold text-ronda-text">Información laboral</h2>
               <p className="mt-1 text-xs text-ronda-muted">Acceso y permisos en el panel interno.</p>
@@ -197,8 +197,8 @@ export function NewEmployeeClient() {
             <div className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase text-ronda-muted">Código de empleado *</label>
-                <div className="flex gap-2">
-                  <div className="flex flex-1 overflow-hidden rounded-lg border border-ronda-border bg-ronda-bg focus-within:border-ronda-gold transition">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <div className="flex min-w-0 overflow-hidden rounded-lg border border-ronda-border bg-ronda-bg transition focus-within:border-ronda-gold">
                     <span className="flex items-center border-r border-ronda-border bg-ronda-surface px-3 font-mono text-sm font-semibold text-ronda-muted select-none">
                       500
                     </span>
@@ -211,7 +211,7 @@ export function NewEmployeeClient() {
                         set('employeeCode', '500' + digits);
                       }}
                       placeholder="00000"
-                      className="flex-1 bg-transparent px-3 py-2 font-mono text-sm text-ronda-text outline-none placeholder:text-ronda-muted/60"
+                      className="min-w-0 flex-1 bg-transparent px-3 py-2 font-mono text-sm text-ronda-text outline-none placeholder:text-ronda-muted/60"
                       required
                       minLength={5}
                       maxLength={5}
@@ -222,7 +222,7 @@ export function NewEmployeeClient() {
                   <button
                     type="button"
                     onClick={() => set('employeeCode', generateEmployeeCode())}
-                    className="rounded-lg border border-ronda-border bg-ronda-bg px-4 text-sm font-semibold text-ronda-text transition hover:bg-ronda-surface"
+                    className="rounded-lg border border-ronda-border bg-ronda-bg px-4 py-2 text-sm font-semibold text-ronda-text transition hover:bg-ronda-surface"
                   >
                     Generar
                   </button>
@@ -235,14 +235,14 @@ export function NewEmployeeClient() {
               </div>
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase text-ronda-muted">Contraseña inicial *</label>
-                <div className="flex gap-2">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                   <input
                     type="text"
                     autoComplete="new-password"
                     value={form.password}
                     onChange={(e) => set('password', e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className="flex-1 rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text outline-none transition placeholder:text-ronda-muted/60 focus:border-ronda-gold"
+                    className="min-w-0 rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text outline-none transition placeholder:text-ronda-muted/60 focus:border-ronda-gold"
                     required
                     minLength={6}
                     disabled={saving}
@@ -250,7 +250,7 @@ export function NewEmployeeClient() {
                   <button
                     type="button"
                     onClick={() => set('password', generatePassword())}
-                    className="rounded-lg border border-ronda-border bg-ronda-bg px-4 text-sm font-semibold text-ronda-text transition hover:bg-ronda-surface"
+                    className="rounded-lg border border-ronda-border bg-ronda-bg px-4 py-2 text-sm font-semibold text-ronda-text transition hover:bg-ronda-surface"
                   >
                     Generar
                   </button>
@@ -283,7 +283,7 @@ export function NewEmployeeClient() {
           </div>
 
           {/* Datos bancarios */}
-          <div className="grid grid-cols-[220px_1fr] gap-8 p-6">
+          <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[220px_1fr] lg:gap-8">
             <div>
               <h2 className="text-sm font-semibold text-ronda-text">Datos bancarios</h2>
               <p className="mt-1 text-xs text-ronda-muted">Para gestión de nóminas. Opcional.</p>
@@ -317,11 +317,29 @@ export function NewEmployeeClient() {
         </div>
 
         {error && (
-          <div className="mx-6 mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <div className="mx-4 mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 sm:mx-6">
             <p className="text-sm font-medium text-ronda-error">{error}</p>
           </div>
         )}
       </form>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 gap-3 border-t border-ronda-border bg-ronda-bg/95 p-4 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="rounded-lg border border-ronda-border bg-ronda-surface px-4 py-2 text-sm font-semibold text-ronda-text transition hover:bg-ronda-bg"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          form="new-employee-form"
+          disabled={saving}
+          className="rounded-lg bg-ronda-coffee px-4 py-2 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark disabled:opacity-50"
+        >
+          {saving ? 'Creando...' : 'Crear empleado'}
+        </button>
+      </div>
     </div>
   );
 }

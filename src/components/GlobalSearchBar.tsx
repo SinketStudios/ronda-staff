@@ -307,7 +307,7 @@ export function GlobalSearchBar() {
             }}
           />
 
-          <div className="fixed top-16 left-80 z-50 max-w-xl w-full">
+          <div className="fixed inset-x-4 top-16 z-50 w-auto max-w-xl lg:left-80 lg:right-auto lg:w-full">
             <div className="rounded-lg border border-ronda-border bg-ronda-surface shadow-xl overflow-hidden">
               <div className="max-h-96 overflow-y-auto">
                 {isLoading && (

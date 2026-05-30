@@ -15,6 +15,10 @@ export function TemplatesPageClient({ templates }: TemplatesPageClientProps) {
   const [isDesktop, setIsDesktop] = useState(true);
 
   useEffect(() => {
+    setIsDesktop(window.matchMedia('(min-width: 1024px)').matches);
+  }, []);
+
+  useEffect(() => {
     if (!selectedTemplateId) return;
 
     setLoading(true);
@@ -33,11 +37,11 @@ export function TemplatesPageClient({ templates }: TemplatesPageClientProps) {
   }
 
   return (
-    <div className="flex h-full flex-col gap-5 overflow-hidden">
+    <div className="flex min-h-full flex-col gap-5 lg:h-full lg:overflow-hidden">
       {/* Header */}
       <header className="flex shrink-0 items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-ronda-text">Plantillas de correo</h1>
+          <h1 className="text-2xl font-semibold text-ronda-text sm:text-3xl">Plantillas de correo</h1>
           <p className="mt-2 text-sm text-ronda-muted">
             Previsualiza las plantillas de correo que envía el sistema.
           </p>
@@ -45,14 +49,14 @@ export function TemplatesPageClient({ templates }: TemplatesPageClientProps) {
       </header>
 
       {/* Main content */}
-      <div className="grid min-h-0 flex-1 grid-cols-[300px_1fr] gap-5 overflow-hidden">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[300px_1fr] lg:gap-5 lg:overflow-hidden">
         {/* Left column - Template list */}
-        <div className="flex flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface">
+        <div className="flex max-h-80 flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface lg:max-h-none">
           <div className="border-b border-ronda-border bg-ronda-surface-soft px-4 py-3">
             <h2 className="text-xs font-semibold uppercase text-ronda-muted">Plantillas disponibles</h2>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
-            <div className="space-y-2 p-3">
+            <div className="grid gap-2 p-3 sm:grid-cols-2 lg:block lg:space-y-2">
               {templates.map((template) => (
                 <button
                   key={template.id}
@@ -64,8 +68,8 @@ export function TemplatesPageClient({ templates }: TemplatesPageClientProps) {
                   }`}
                 >
                   <p className="font-semibold text-ronda-text">{template.name}</p>
-                  <p className="mt-1 text-xs text-ronda-muted">{template.subject}</p>
-                  <p className="mt-2 text-xs text-ronda-muted/70">{template.description}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-ronda-muted lg:truncate">{template.subject}</p>
+                  <p className="mt-2 line-clamp-2 text-xs text-ronda-muted/70">{template.description}</p>
                 </button>
               ))}
             </div>
@@ -73,11 +77,11 @@ export function TemplatesPageClient({ templates }: TemplatesPageClientProps) {
         </div>
 
         {/* Right column - Preview */}
-        <div className="flex flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface">
+        <div className="flex min-h-[70vh] flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface lg:min-h-0">
           {selectedTemplate && (
             <>
               <div className="border-b border-ronda-border bg-ronda-surface-soft px-4 py-3">
-                <div className="flex items-center justify-between gap-4">
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate text-sm font-semibold text-ronda-text">{selectedTemplate.name}</h2>
                     <p className="mt-1 truncate text-xs text-ronda-muted">{selectedTemplate.subject}</p>
@@ -102,7 +106,7 @@ export function TemplatesPageClient({ templates }: TemplatesPageClientProps) {
                     Cargando...
                   </div>
                 ) : templateDetail ? (
-                  <div className={`mx-auto h-full ${isDesktop ? 'w-full' : 'w-[390px]'}`}>
+                  <div className={`mx-auto h-full ${isDesktop ? 'min-w-[760px] lg:min-w-0 lg:w-full' : 'w-full max-w-[390px]'}`}>
                     <iframe
                       srcDoc={inertHtml(templateDetail.html)}
                       className="w-full h-full border-0"

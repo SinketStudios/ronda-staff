@@ -20,7 +20,7 @@ export default async function DashboardLayout({
 
   return (
     <DashboardLayoutClient staff={staff}>
-      <aside className="flex w-72 shrink-0 flex-col border-r border-ronda-border bg-ronda-surface">
+      <aside className="hidden w-72 shrink-0 flex-col border-r border-ronda-border bg-ronda-surface lg:flex">
         <div className="border-b border-ronda-border px-6 py-5">
           <Logo className="mb-4 w-[116px]" priority />
           <div className="rounded-lg border border-ronda-border bg-ronda-bg px-3 py-3">
@@ -53,17 +53,24 @@ export default async function DashboardLayout({
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-hidden flex flex-col">
-        {/* Header pegado a ambos sidemenus */}
-        <div className="border-b border-ronda-border bg-ronda-surface/80 shrink-0">
-          <div className="px-8 py-4 flex items-center h-20">
-            <div className="flex-1 max-w-xl">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b border-ronda-border bg-ronda-surface/92 backdrop-blur">
+          <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-3 lg:hidden">
+            <Logo className="w-[94px]" priority />
+            <div className="min-w-0 flex-1">
+              <GlobalSearchBar />
+            </div>
+          </div>
+          <div className="lg:hidden">
+            <StaffSidebarNav variant="mobile" />
+          </div>
+          <div className="hidden h-20 items-center px-8 py-4 lg:flex">
+            <div className="max-w-xl flex-1">
               <GlobalSearchBar />
             </div>
           </div>
         </div>
-        {/* Main content con padding */}
-        <div className="min-h-0 flex-1 overflow-hidden p-8">{children}</div>
+        <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 lg:overflow-hidden lg:p-8">{children}</div>
       </main>
     </DashboardLayoutClient>
   );

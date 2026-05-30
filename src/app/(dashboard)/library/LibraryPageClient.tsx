@@ -419,15 +419,15 @@ export function LibraryPageClient() {
   }, [isEditingImage]);
 
   return (
-    <div className="flex h-full gap-5 overflow-hidden">
+    <div className="flex min-h-full flex-col gap-4 lg:h-full lg:flex-row lg:gap-5 lg:overflow-hidden">
       {/* Sidebar Filtros - Izquierda */}
-      <aside className="w-56 shrink-0 overflow-auto rounded-lg border border-ronda-border bg-ronda-surface p-4">
-        <h3 className="text-xs font-semibold uppercase text-ronda-muted mb-4">Categorías</h3>
-        <div className="space-y-2">
+      <aside className="shrink-0 overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface p-3 lg:w-56 lg:overflow-auto lg:p-4">
+        <h3 className="mb-3 text-xs font-semibold uppercase text-ronda-muted lg:mb-4">Categorías</h3>
+        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] lg:block lg:space-y-2 lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden">
           {/* Mostrar todas */}
           <button
             onClick={() => setSelectedCategoryFilter(null)}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+            className={`shrink-0 rounded-lg px-3 py-2 text-left text-sm transition lg:w-full ${
               selectedCategoryFilter === null
                 ? 'bg-ronda-gold text-white font-semibold'
                 : 'text-ronda-text hover:bg-ronda-bg'
@@ -442,7 +442,7 @@ export function LibraryPageClient() {
               <button
                 key={category.id}
                 onClick={() => setSelectedCategoryFilter(category.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                className={`shrink-0 rounded-lg px-3 py-2 text-left text-sm transition lg:w-full ${
                   selectedCategoryFilter === category.id
                     ? 'bg-ronda-gold text-white font-semibold'
                     : 'text-ronda-text hover:bg-ronda-bg'
@@ -452,15 +452,15 @@ export function LibraryPageClient() {
               </button>
             ))
           ) : (
-            <p className="text-xs text-ronda-muted px-3 py-2">Sin categorías</p>
+            <p className="shrink-0 px-3 py-2 text-xs text-ronda-muted">Sin categorías</p>
           )}
         </div>
       </aside>
 
       {/* Contenido Principal - Derecha */}
-      <div className="flex flex-1 min-w-0 flex-col gap-4 overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col gap-4 lg:overflow-hidden">
         {/* Header con búsqueda y botón */}
-        <div className="flex shrink-0 gap-3">
+        <div className="grid shrink-0 gap-3 sm:grid-cols-[1fr_auto]">
           <input
             type="text"
             placeholder="Buscar imágenes..."
@@ -471,20 +471,20 @@ export function LibraryPageClient() {
           <button
             type="button"
             onClick={() => setOpenModal(true)}
-            className="shrink-0 px-4 py-2 rounded-lg bg-ronda-gold text-white font-semibold transition hover:bg-ronda-gold-dark"
+            className="shrink-0 rounded-lg bg-ronda-gold px-4 py-2 font-semibold text-white transition hover:bg-ronda-gold-dark"
           >
             + Añadir
           </button>
         </div>
 
         {/* Galería de imágenes */}
-        <div className="flex-1 min-h-0 overflow-auto rounded-lg bg-ronda-surface p-6 outline outline-1 -outline-offset-1 outline-ronda-border">
+        <div className="min-h-[420px] flex-1 overflow-auto rounded-lg bg-ronda-surface p-3 outline outline-1 -outline-offset-1 outline-ronda-border sm:p-4 lg:min-h-0 lg:p-6">
           {filtered.length === 0 ? (
             <div className="text-center text-ronda-muted">
               <p className="text-sm">{images.length === 0 ? 'No hay imágenes. ¡Empieza a subir!' : 'No hay imágenes que coincidan'}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-4 auto-rows-max justify-items-center">
+            <div className="grid auto-rows-max grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
               {filtered.map((img) => (
                 <div
                   key={img.id}
@@ -520,10 +520,10 @@ export function LibraryPageClient() {
       {openModal && (
         <>
           <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setOpenModal(false)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-ronda-surface rounded-2xl shadow-xl border border-ronda-border w-full max-w-6xl h-[80vh] flex flex-col">
+          <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+            <div className="flex h-dvh w-full flex-col rounded-t-2xl border border-ronda-border bg-ronda-surface shadow-xl sm:h-[90vh] sm:max-w-6xl sm:rounded-2xl lg:h-[80vh]">
               {/* Header */}
-              <div className="border-b border-ronda-border px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center justify-between border-b border-ronda-border px-4 py-4 sm:px-6">
                 <h2 className="text-lg font-semibold text-ronda-text">Añadir imagen</h2>
                 <button
                   onClick={() => setOpenModal(false)}
@@ -536,14 +536,14 @@ export function LibraryPageClient() {
               </div>
 
               {/* Body - Drag & Drop, Edit, or Upload */}
-              <div className="flex-1 overflow-auto p-8 flex items-center justify-center">
+              <div className="flex flex-1 items-center justify-center overflow-auto p-4 sm:p-6 lg:p-8">
                 {isUploading && imageUrl ? (
-                  <div className="w-full h-full flex flex-col gap-6">
+                  <div className="flex h-full w-full flex-col gap-5 lg:gap-6">
                     {/* Primera fila: Imagen + Título y Descripción */}
-                    <div className="flex gap-6">
+                    <div className="grid gap-5 lg:grid-cols-[400px_1fr] lg:gap-6">
                       {/* Vista previa del recorte */}
-                      <div className="shrink-0">
-                        <div className="rounded-lg overflow-hidden bg-ronda-bg" style={{ width: '400px', height: '400px' }}>
+                      <div className="min-w-0">
+                        <div className="aspect-square w-full max-w-[400px] overflow-hidden rounded-lg bg-ronda-bg">
                           <img
                             src={imageUrl}
                             alt="Preview"
@@ -557,7 +557,7 @@ export function LibraryPageClient() {
                       </div>
 
                       {/* Título y Descripción */}
-                      <div className="flex-1 space-y-4">
+                      <div className="min-w-0 space-y-4">
                         <div>
                           <label className="text-xs font-semibold text-ronda-muted block mb-2">Título *</label>
                           <input
@@ -575,14 +575,14 @@ export function LibraryPageClient() {
                             placeholder="Descripción opcional"
                             value={uploadData.description}
                             onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
-                            className="w-full h-full px-3 py-2 rounded-lg border border-ronda-border bg-ronda-surface text-ronda-text placeholder:text-ronda-muted/60 outline-none transition focus:ring-2 focus:ring-ronda-gold focus:border-ronda-gold resize-none"
+                            className="h-28 w-full resize-none rounded-lg border border-ronda-border bg-ronda-surface px-3 py-2 text-ronda-text outline-none transition placeholder:text-ronda-muted/60 focus:border-ronda-gold focus:ring-2 focus:ring-ronda-gold lg:h-full"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Segunda fila: Categoría y Tags */}
-                    <div className="grid grid-cols-2 gap-4 shrink-0">
+                    <div className="grid shrink-0 gap-4 sm:grid-cols-2">
                       <div>
                         <label className="text-xs font-semibold text-ronda-muted block mb-2">Categoría *</label>
                         <CategoryDropdown
@@ -649,9 +649,9 @@ export function LibraryPageClient() {
                     </div>
                   </div>
                 ) : isEditing && imageUrl ? (
-                  <div className="flex flex-col items-center justify-center gap-6 w-full h-full">
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-6">
                     <div className="flex items-center justify-center select-none">
-                      <div ref={containerRef} className="rounded-lg overflow-hidden bg-ronda-bg shrink-0" style={{ width: '400px', height: '400px' }}>
+                      <div ref={containerRef} className="aspect-square w-[min(400px,calc(100vw-48px))] shrink-0 overflow-hidden rounded-lg bg-ronda-bg">
                         <img
                           ref={imgRef}
                           src={imageUrl}
@@ -707,7 +707,7 @@ export function LibraryPageClient() {
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     onClick={() => document.getElementById('file-input-library')?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition w-full h-full flex flex-col items-center justify-center gap-6 ${
+                    className={`flex h-full w-full cursor-pointer flex-col items-center justify-center gap-5 rounded-2xl border-2 border-dashed p-6 text-center transition sm:gap-6 sm:p-12 ${
                       isDragging
                         ? 'border-ronda-gold bg-ronda-gold/5'
                         : 'border-ronda-border hover:border-ronda-gold hover:bg-ronda-bg'
@@ -719,7 +719,7 @@ export function LibraryPageClient() {
                       <svg className="w-16 h-16 mx-auto text-ronda-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                      <p className="text-2xl font-semibold text-ronda-muted mb-2">Arrastra una imagen aquí</p>
+                      <p className="mb-2 text-xl font-semibold text-ronda-muted sm:text-2xl">Arrastra una imagen aquí</p>
                       <p className="text-sm text-ronda-muted">o haz clic para seleccionar</p>
                     </div>
 
@@ -729,7 +729,7 @@ export function LibraryPageClient() {
                       <div className="flex-1 border-t border-ronda-border/30" />
                     </div>
 
-                    <div className="w-full max-w-xs flex gap-2 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="pointer-events-auto grid w-full max-w-xs gap-2 sm:flex" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="url"
                         placeholder="Pega la URL"
@@ -759,7 +759,7 @@ export function LibraryPageClient() {
               </div>
 
               {/* Footer */}
-              <div className="border-t border-ronda-border px-6 py-4 flex gap-3 justify-end">
+              <div className="flex gap-3 border-t border-ronda-border px-4 py-4 sm:justify-end sm:px-6">
                 <button
                   onClick={() => {
                     if (isUploading) {
@@ -770,7 +770,7 @@ export function LibraryPageClient() {
                       setOpenModal(false);
                     }
                   }}
-                  className="px-4 py-2 rounded-lg border border-ronda-border text-ronda-text font-semibold transition hover:bg-ronda-bg"
+                  className="flex-1 rounded-lg border border-ronda-border px-4 py-2 font-semibold text-ronda-text transition hover:bg-ronda-bg sm:flex-none"
                 >
                   {isUploading ? 'Atrás' : 'Cancelar'}
                 </button>
@@ -778,14 +778,14 @@ export function LibraryPageClient() {
                   <button
                     onClick={handleUpload}
                     disabled={!uploadData.title || !uploadData.categoryId || isUploadingImage}
-                    className="px-4 py-2 rounded-lg bg-ronda-gold text-white font-semibold transition hover:bg-ronda-gold-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 rounded-lg bg-ronda-gold px-4 py-2 font-semibold text-white transition hover:bg-ronda-gold-dark disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                   >
                     {isUploadingImage ? 'Subiendo...' : 'Subir imagen'}
                   </button>
                 ) : isEditing ? (
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 rounded-lg bg-ronda-gold text-white font-semibold transition hover:bg-ronda-gold-dark"
+                    className="flex-1 rounded-lg bg-ronda-gold px-4 py-2 font-semibold text-white transition hover:bg-ronda-gold-dark sm:flex-none"
                   >
                     Siguiente
                   </button>
@@ -793,7 +793,7 @@ export function LibraryPageClient() {
                   <button
                     onClick={handleSave}
                     disabled={!imageUrl}
-                    className="px-4 py-2 rounded-lg bg-ronda-gold text-white font-semibold transition hover:bg-ronda-gold-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 rounded-lg bg-ronda-gold px-4 py-2 font-semibold text-white transition hover:bg-ronda-gold-dark disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                   >
                     Guardar
                   </button>
@@ -808,10 +808,10 @@ export function LibraryPageClient() {
       {selectedImage && (
         <>
           <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSelectedImage(null)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-ronda-surface rounded-2xl shadow-xl border border-ronda-border w-full max-w-6xl h-[80vh] flex overflow-visible">
+          <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+            <div className="flex h-dvh w-full flex-col overflow-hidden rounded-t-2xl border border-ronda-border bg-ronda-surface shadow-xl sm:h-[90vh] sm:max-w-6xl sm:rounded-2xl lg:h-[80vh] lg:flex-row lg:overflow-visible">
               {/* Imagen - Izquierda */}
-              <div className="flex-1 flex items-center justify-center bg-black/20 p-6">
+              <div className="flex min-h-0 flex-1 items-center justify-center bg-black/20 p-4 sm:p-6">
                 <img
                   src={selectedImage.imageUrl}
                   alt={selectedImage.title}
@@ -820,7 +820,7 @@ export function LibraryPageClient() {
               </div>
 
               {/* Sidemenu Metadatos - Derecha */}
-              <aside className="w-80 bg-ronda-surface border-l border-ronda-border p-6 flex flex-col gap-6 overflow-y-auto overflow-x-visible">
+              <aside className="flex max-h-[48vh] w-full flex-col gap-5 overflow-y-auto overflow-x-visible border-t border-ronda-border bg-ronda-surface p-4 sm:p-6 lg:max-h-none lg:w-80 lg:border-l lg:border-t-0 lg:gap-6">
                 {/* Header con botón Cerrar */}
                 <div className="flex items-start justify-between">
                   <h2 className="text-lg font-semibold text-ronda-text flex-1">Detalles</h2>

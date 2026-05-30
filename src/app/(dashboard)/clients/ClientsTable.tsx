@@ -93,10 +93,10 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
   }
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 lg:overflow-hidden">
       {/* Filters Block - No background, white inputs */}
-      <div className="flex shrink-0 flex-wrap items-end gap-3">
-        <label className="grid min-w-72 flex-1 gap-1.5 text-xs font-semibold uppercase text-ronda-muted">
+      <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
+        <label className="grid min-w-0 gap-1.5 text-xs font-semibold uppercase text-ronda-muted lg:min-w-72 lg:flex-1">
           Buscar
           <input
             value={query}
@@ -155,14 +155,14 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
         <button
           type="button"
           onClick={() => router.refresh()}
-          className="min-h-10 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark"
+          className="min-h-10 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark sm:col-span-2 lg:col-span-1"
         >
           Actualizar
         </button>
       </div>
 
       {/* Table Block - Border, white background, rounded, internal scroll */}
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface">
+      <section className="hidden min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface lg:flex">
         <div className="grid shrink-0 grid-cols-[1.25fr_1fr_0.95fr_0.75fr_1fr_6rem] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
           <span>Organizacion</span>
           <span>Suscripcion</span>
@@ -219,12 +219,55 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
         </div>
       </section>
 
+      <section className="grid gap-3 lg:hidden">
+        {pageItems.length === 0 ? (
+          <div className="rounded-lg border border-ronda-border bg-ronda-surface px-4 py-10 text-center text-sm text-ronda-muted">
+            No hay clientes que coincidan con los filtros.
+          </div>
+        ) : (
+          pageItems.map((client) => {
+            const plan = formatPlan(client);
+            const planStatusData = formatSubscriptionStatus(client.subscription.status);
+
+            return (
+              <button
+                key={client.id}
+                type="button"
+                onClick={() => onSelectClient(client)}
+                className="rounded-lg border border-ronda-border bg-ronda-surface p-4 text-left shadow-sm transition hover:bg-ronda-bg/60"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-ronda-text">{client.name}</p>
+                    <p className="mt-1 truncate text-xs text-ronda-muted">{client.legalName || client.taxId || client.email || 'Sin datos fiscales'}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-ronda-coffee">{client.restaurantsCount} locales</span>
+                </div>
+                <div className="mt-3 grid gap-2">
+                  <p className="truncate text-sm font-semibold text-ronda-text">{plan.name}</p>
+                  <p className="truncate text-xs text-ronda-muted">{plan.price} - {plan.cycle} - {plan.source}</p>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${planStatusData.className}`}>
+                    {planStatusData.label}
+                  </span>
+                  <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${statusClass[client.paymentStatus]}`}>
+                    {statusLabel[client.paymentStatus]}
+                  </span>
+                </div>
+                <p className="mt-3 truncate text-xs text-ronda-muted">{client.owner.name} · {client.owner.email}</p>
+              </button>
+            );
+          })
+        )}
+      </section>
+
       {/* Pagination Block - No background, white input buttons */}
-      <div className="flex shrink-0 items-center justify-between gap-4 text-sm text-ronda-muted">
+      <div className="grid shrink-0 gap-3 text-sm text-ronda-muted sm:flex sm:items-center sm:justify-between sm:gap-4">
         <p>
           {filtered.length === 0 ? '0 clientes' : `${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filtered.length)} de ${filtered.length}`}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:flex">
           <button
             type="button"
             onClick={() => setPage((value) => Math.max(1, value - 1))}
