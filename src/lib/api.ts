@@ -357,6 +357,101 @@ export interface AuditLogResponse {
   totalPages: number;
 }
 
+export type SupportTicket = {
+  id: string;
+  reference: string;
+  category: string;
+  topic: string;
+  description: string;
+  status: string;
+  priority: string;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string;
+  closedAt: string | null;
+  customer: { id: string; name: string; email: string } | null;
+  organization: { id: string; name: string } | null;
+  restaurant: { id: string; name: string; city: string | null } | null;
+  messages: Array<{
+    id: string;
+    authorType: 'customer' | 'staff';
+    body: string;
+    createdAt: string;
+    author: { id: string; name: string; email?: string; employeeCode?: string } | null;
+    attachments: Array<{ id: string; filename: string; url: string; size: number; mimeType: string | null }>;
+  }>;
+  attachments: Array<{
+    id: string;
+    filename: string;
+    url: string;
+    size: number;
+    mimeType: string | null;
+    createdAt: string;
+  }>;
+};
+
+export async function getSupportTickets(): Promise<SupportTicket[]> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/support/tickets`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudieron cargar los tickets${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function fetchSupportTickets(): Promise<SupportTicket[]> {
+  const res = await fetch(`${API_URL}/staff/support/tickets`, {
+    method: 'GET',
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Error al cargar tickets (${res.status})`);
+  return res.json();
+}
+
+export async function replySupportTicket(ticketId: string, body: string, files: File[] = []): Promise<SupportTicket> {
+  const form = new FormData();
+  form.append('body', body);
+  for (const file of files) {
+    form.append('files', file);
+  }
+
+  const res = await fetch(`${API_URL}/staff/support/tickets/${ticketId}/messages`, {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo responder el ticket (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function closeSupportTicket(ticketId: string): Promise<SupportTicket> {
+  const res = await fetch(`${API_URL}/staff/support/tickets/${ticketId}/close`, {
+    method: 'PATCH',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo cerrar el ticket (${res.status})`);
+  }
+
+  return res.json();
+}
+
 export async function getAuditLogs(params?: {
   staffMemberId?: string;
   action?: string;
