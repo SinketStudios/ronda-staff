@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { StaffClient } from '@/lib/api';
+import type { RestaurantBillingSubscription, StaffClient } from '@/lib/api';
 
 const statusLabel: Record<StaffClient['paymentStatus'], string> = {
   not_configured: 'Sin configurar',
@@ -26,6 +26,15 @@ const subscriptionStatus: Record<string, { label: string; className: string }> =
   unpaid: { label: 'Impagado', className: 'bg-red-50 text-ronda-error' },
   canceled: { label: 'Cancelado', className: 'bg-ronda-bg text-ronda-muted' },
   paused: { label: 'Pausado', className: 'bg-ronda-bg text-ronda-muted' },
+  pending_payment: { label: 'Pago pendiente', className: 'bg-ronda-gold/10 text-ronda-gold-dark' },
+  restricted: { label: 'Restringido', className: 'bg-red-50 text-ronda-error' },
+  cancelled: { label: 'Cancelado', className: 'bg-ronda-bg text-ronda-muted' },
+};
+
+const planNames: Record<string, string> = {
+  starter: 'Starter',
+  pro: 'Pro',
+  business: 'Business',
 };
 
 function formatSubscriptionStatus(status: string | null) {
@@ -45,8 +54,16 @@ function formatPlan(client: StaffClient) {
     name: subscription.planName || 'Sin plan',
     price,
     cycle: suffix,
-    source: subscription.source === 'stripe' ? 'Stripe' : 'DB',
+    source: 'Locales',
   };
+}
+
+function formatRestaurantSubscription(subscription: RestaurantBillingSubscription | null) {
+  const statusData = formatSubscriptionStatus(subscription?.status ?? null);
+  const planName = subscription?.planId ? planNames[subscription.planId] ?? subscription.planId : 'Sin plan';
+  const cycle = subscription?.billingCycle === 'annual' ? 'anual' : subscription?.billingCycle === 'monthly' ? 'mensual' : 'sin ciclo';
+  const renewal = subscription?.cancelAtPeriodEnd ? 'Cancela al renovar' : 'Renueva';
+  return { planName, cycle, renewal, statusData };
 }
 
 function formatDate(date: string) {
@@ -190,7 +207,10 @@ export function ClientDetailPage({ client }: ClientDetailPageProps) {
           <div className="mt-8 pt-8 border-t border-ronda-border">
             <h2 className="text-lg font-semibold text-ronda-text mb-4">Locales ({client.restaurants.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {client.restaurants.map((restaurant) => (
+              {client.restaurants.map((restaurant) => {
+                const localBilling = formatRestaurantSubscription(restaurant.subscription);
+
+                return (
                 <div key={restaurant.id} className="rounded-lg bg-ronda-bg border border-ronda-border p-4">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <h3 className="text-sm font-semibold text-ronda-text flex-1">{restaurant.name}</h3>
@@ -215,8 +235,31 @@ export function ClientDetailPage({ client }: ClientDetailPageProps) {
                     </p>
                     <p className="text-ronda-muted/70 pt-2">Creado el {formatDate(restaurant.createdAt)}</p>
                   </div>
+                  <div className="mt-4 rounded-lg border border-ronda-border bg-ronda-surface p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase text-ronda-muted">Billing local</p>
+                        <p className="mt-1 text-sm font-semibold text-ronda-text">{localBilling.planName}</p>
+                        <p className="text-xs text-ronda-muted">{localBilling.cycle} - {localBilling.renewal}</p>
+                      </div>
+                      <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${localBilling.statusData.className}`}>
+                        {localBilling.statusData.label}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid gap-2 border-t border-ronda-border pt-3 text-xs text-ronda-muted">
+                      <p>Sub. externa: {restaurant.subscription?.stripeSubscriptionId ?? '-'}</p>
+                      <p>Fin periodo: {restaurant.subscription?.currentPeriodEnd ? formatDate(restaurant.subscription.currentPeriodEnd) : '-'}</p>
+                      {restaurant.subscription?.scheduledPlanId ? (
+                        <p className="font-semibold text-ronda-gold-dark">
+                          Cambio programado: {planNames[restaurant.subscription.scheduledPlanId] ?? restaurant.subscription.scheduledPlanId}
+                          {restaurant.subscription.scheduledBillingCycle ? ` - ${restaurant.subscription.scheduledBillingCycle}` : ''}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

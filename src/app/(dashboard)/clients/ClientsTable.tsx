@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { StaffClient } from '@/lib/api';
+import type { RestaurantBillingSubscription, StaffClient } from '@/lib/api';
 
 const statusLabel: Record<StaffClient['paymentStatus'], string> = {
   not_configured: 'Sin configurar',
@@ -27,6 +27,16 @@ const subscriptionStatus: Record<string, { label: string; className: string }> =
   unpaid: { label: 'Impagado', className: 'bg-red-50 text-ronda-error' },
   canceled: { label: 'Cancelado', className: 'bg-ronda-bg text-ronda-muted' },
   paused: { label: 'Pausado', className: 'bg-ronda-bg text-ronda-muted' },
+  pending_payment: { label: 'Pago pendiente', className: 'bg-ronda-gold/10 text-ronda-gold-dark' },
+  restricted: { label: 'Restringido', className: 'bg-red-50 text-ronda-error' },
+  cancelled: { label: 'Cancelado', className: 'bg-ronda-bg text-ronda-muted' },
+};
+
+const operationalSubscriptionStatuses = new Set(['active', 'trialing']);
+const planNames: Record<string, string> = {
+  starter: 'Starter',
+  pro: 'Pro',
+  business: 'Business',
 };
 
 function formatSubscriptionStatus(status: string | null) {
@@ -46,8 +56,19 @@ function formatPlan(client: StaffClient) {
     name: subscription.planName || 'Sin plan',
     price,
     cycle: suffix,
-    source: subscription.source === 'stripe' ? 'Stripe' : 'DB',
+    source: 'Locales',
   };
+}
+
+function formatRestaurantSubscription(subscription: RestaurantBillingSubscription | null) {
+  const statusData = formatSubscriptionStatus(subscription?.status ?? null);
+  const planName = subscription?.planId ? planNames[subscription.planId] ?? subscription.planId : 'Sin plan';
+  const cycle = subscription?.billingCycle === 'annual' ? 'anual' : subscription?.billingCycle === 'monthly' ? 'mensual' : 'sin ciclo';
+  return { planName, cycle, statusData };
+}
+
+function getBillingIssueCount(client: StaffClient) {
+  return (client.restaurants ?? []).filter((restaurant) => !operationalSubscriptionStatuses.has(restaurant.subscription?.status ?? '')).length;
 }
 
 interface ClientsTableProps {
@@ -180,6 +201,7 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
               {pageItems.map((client) => {
                 const plan = formatPlan(client);
                 const planStatusData = formatSubscriptionStatus(client.subscription.status);
+                const billingIssueCount = getBillingIssueCount(client);
 
                 return (
                   <button
@@ -210,7 +232,12 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
                       <p className="truncate text-xs text-ronda-muted">{client.owner.email}</p>
                     </div>
 
-                    <p className="text-right font-semibold text-ronda-coffee">{client.restaurantsCount}</p>
+                    <div className="text-right">
+                      <p className="font-semibold text-ronda-coffee">{client.restaurantsCount}</p>
+                      {billingIssueCount > 0 ? (
+                        <p className="text-xs font-semibold text-ronda-error">{billingIssueCount} billing</p>
+                      ) : null}
+                    </div>
                   </button>
                 );
               })}
@@ -228,6 +255,8 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
           pageItems.map((client) => {
             const plan = formatPlan(client);
             const planStatusData = formatSubscriptionStatus(client.subscription.status);
+            const billingIssueCount = getBillingIssueCount(client);
+            const primaryLocalBilling = formatRestaurantSubscription(client.primaryRestaurant?.subscription ?? null);
 
             return (
               <button
@@ -246,6 +275,11 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
                 <div className="mt-3 grid gap-2">
                   <p className="truncate text-sm font-semibold text-ronda-text">{plan.name}</p>
                   <p className="truncate text-xs text-ronda-muted">{plan.price} - {plan.cycle} - {plan.source}</p>
+                  {client.primaryRestaurant ? (
+                    <p className="truncate text-xs text-ronda-muted">
+                      Local principal: {primaryLocalBilling.planName} - {primaryLocalBilling.cycle}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${planStatusData.className}`}>
@@ -254,6 +288,11 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
                   <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${statusClass[client.paymentStatus]}`}>
                     {statusLabel[client.paymentStatus]}
                   </span>
+                  {billingIssueCount > 0 ? (
+                    <span className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-ronda-error">
+                      {billingIssueCount} locales con billing
+                    </span>
+                  ) : null}
                 </div>
                 <p className="mt-3 truncate text-xs text-ronda-muted">{client.owner.name} · {client.owner.email}</p>
               </button>

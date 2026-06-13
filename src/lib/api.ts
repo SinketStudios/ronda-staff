@@ -29,6 +29,28 @@ export interface StaffEmployee {
   createdAt: string;
 }
 
+export type RestaurantBillingSubscription = {
+  planId: string | null;
+  billingCycle: string | null;
+  status: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  scheduledPlanId: string | null;
+  scheduledBillingCycle: string | null;
+  stripeSubscriptionId: string | null;
+};
+
+export type StaffClientRestaurant = {
+  id: string;
+  name: string;
+  city: string | null;
+  portalSubdomain: string;
+  paymentStatus: 'not_configured' | 'pending' | 'active' | 'restricted';
+  onboardingCompleted: boolean;
+  createdAt: string;
+  subscription: RestaurantBillingSubscription | null;
+};
+
 export type StaffClient = {
   id: string;
   name: string;
@@ -43,12 +65,9 @@ export type StaffClient = {
     id: string;
     name: string;
     email: string;
-    subscriptionStatus: string | null;
-    currentPlanId: string | null;
-    currentBillingCycle: string | null;
   };
   subscription: {
-    source: 'stripe' | 'database';
+    source: 'database';
     status: string | null;
     planId: string | null;
     planName: string | null;
@@ -57,24 +76,8 @@ export type StaffClient = {
     currency: string | null;
   };
   restaurantsCount: number;
-  primaryRestaurant: {
-    id: string;
-    name: string;
-    city: string | null;
-    portalSubdomain: string;
-    paymentStatus: 'not_configured' | 'pending' | 'active' | 'restricted';
-    onboardingCompleted: boolean;
-    createdAt: string;
-  } | null;
-  restaurants?: Array<{
-    id: string;
-    name: string;
-    city: string | null;
-    portalSubdomain: string;
-    paymentStatus: 'not_configured' | 'pending' | 'active' | 'restricted';
-    onboardingCompleted: boolean;
-    createdAt: string;
-  }>;
+  primaryRestaurant: StaffClientRestaurant | null;
+  restaurants?: StaffClientRestaurant[];
 };
 
 export async function loginStaff(employeeCode: string, password: string): Promise<StaffMember> {

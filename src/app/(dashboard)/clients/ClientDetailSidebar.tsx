@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { StaffClient } from '@/lib/api';
+import type { RestaurantBillingSubscription, StaffClient } from '@/lib/api';
 
 const statusLabel: Record<StaffClient['paymentStatus'], string> = {
   not_configured: 'Sin configurar',
@@ -26,6 +26,15 @@ const subscriptionStatus: Record<string, { label: string; className: string }> =
   unpaid: { label: 'Impagado', className: 'bg-red-50 text-ronda-error' },
   canceled: { label: 'Cancelado', className: 'bg-ronda-bg text-ronda-muted' },
   paused: { label: 'Pausado', className: 'bg-ronda-bg text-ronda-muted' },
+  pending_payment: { label: 'Pago pendiente', className: 'bg-ronda-gold/10 text-ronda-gold-dark' },
+  restricted: { label: 'Restringido', className: 'bg-red-50 text-ronda-error' },
+  cancelled: { label: 'Cancelado', className: 'bg-ronda-bg text-ronda-muted' },
+};
+
+const planNames: Record<string, string> = {
+  starter: 'Starter',
+  pro: 'Pro',
+  business: 'Business',
 };
 
 function formatSubscriptionStatus(status: string | null) {
@@ -45,8 +54,16 @@ function formatPlan(client: StaffClient) {
     name: subscription.planName || 'Sin plan',
     price,
     cycle: suffix,
-    source: subscription.source === 'stripe' ? 'Stripe' : 'DB',
+    source: 'Locales',
   };
+}
+
+function formatRestaurantSubscription(subscription: RestaurantBillingSubscription | null) {
+  const statusData = formatSubscriptionStatus(subscription?.status ?? null);
+  const planName = subscription?.planId ? planNames[subscription.planId] ?? subscription.planId : 'Sin plan';
+  const cycle = subscription?.billingCycle === 'annual' ? 'anual' : subscription?.billingCycle === 'monthly' ? 'mensual' : 'sin ciclo';
+  const renewal = subscription?.cancelAtPeriodEnd ? 'Cancela al renovar' : 'Renueva';
+  return { planName, cycle, renewal, statusData };
 }
 
 function formatDate(date: string) {
@@ -211,6 +228,10 @@ export function ClientDetailSidebar({ client, onClose }: ClientDetailSidebarProp
             <div className="space-y-2">
               {client.restaurants?.map((restaurant) => (
                 <div key={restaurant.id} className="rounded-lg bg-ronda-bg p-3">
+                  {(() => {
+                    const localBilling = formatRestaurantSubscription(restaurant.subscription);
+                    return (
+                      <>
                   <p className="text-sm font-medium text-ronda-text">{restaurant.name}</p>
                   <div className="flex items-center justify-between gap-2 mt-2 text-xs text-ronda-muted">
                     {restaurant.city && <span>{restaurant.city}</span>}
@@ -218,6 +239,29 @@ export function ClientDetailSidebar({ client, onClose }: ClientDetailSidebarProp
                       {restaurant.onboardingCompleted ? 'Completo' : 'Pendiente'}
                     </span>
                   </div>
+                  <div className="mt-3 border-t border-ronda-border pt-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs text-ronda-muted">Plan local</p>
+                        <p className="text-sm font-semibold text-ronda-text">{localBilling.planName}</p>
+                        <p className="text-xs text-ronda-muted">{localBilling.cycle} - {localBilling.renewal}</p>
+                      </div>
+                      <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${localBilling.statusData.className}`}>
+                        {localBilling.statusData.label}
+                      </span>
+                    </div>
+                    {restaurant.subscription?.currentPeriodEnd ? (
+                      <p className="mt-2 text-xs text-ronda-muted">Fin periodo: {formatDate(restaurant.subscription.currentPeriodEnd)}</p>
+                    ) : null}
+                    {restaurant.subscription?.scheduledPlanId ? (
+                      <p className="mt-1 text-xs font-semibold text-ronda-gold-dark">
+                        Cambio programado: {planNames[restaurant.subscription.scheduledPlanId] ?? restaurant.subscription.scheduledPlanId}
+                      </p>
+                    ) : null}
+                  </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
