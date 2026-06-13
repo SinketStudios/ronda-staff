@@ -9,10 +9,12 @@ interface ClientPageProps {
 export default async function ClientPage({ params }: ClientPageProps) {
   const { clientId } = await params;
 
+  let client;
   try {
-    const client = await getStaffClient(clientId);
-    return <ClientDetailPage client={client} />;
+    client = await getStaffClient(clientId);
   } catch {
     notFound();
   }
+
+  return <ClientDetailPage client={client} />;
 }

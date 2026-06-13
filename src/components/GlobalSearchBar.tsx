@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import NextImage from 'next/image';
 import { useRouter } from 'next/navigation';
 import { getStaffClients } from '@/lib/api';
 import { getImages, type LibraryImage } from '@/lib/library-api';
@@ -104,7 +105,7 @@ export function GlobalSearchBar() {
 
   const performSearch = useCallback(async (searchQuery: string) => {
     const normalizedQuery = searchQuery.toLowerCase();
-    let allResults: SearchResult[] = [];
+    const allResults: SearchResult[] = [];
 
     const matchedPages: SearchResult[] = [];
     PAGES.forEach((page) => {
@@ -309,7 +310,9 @@ export function GlobalSearchBar() {
                               className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${idx === selectedIndex ? 'bg-ronda-gold/10' : 'hover:bg-ronda-gold/5'}`}
                             >
                               {result.imageUrl ? (
-                                <img src={result.imageUrl} alt={result.title} className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+                                <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg">
+                                  <NextImage src={result.imageUrl} alt={result.title} fill sizes="36px" unoptimized className="object-cover" />
+                                </span>
                               ) : (
                                 <div className="shrink-0 text-ronda-muted">{result.icon}</div>
                               )}

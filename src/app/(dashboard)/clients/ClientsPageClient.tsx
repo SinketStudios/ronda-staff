@@ -1,9 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import type { StaffClient } from '@/lib/api';
 import { ClientsTable } from './ClientsTable';
-import { ClientDetailSidebar } from './ClientDetailSidebar';
 
 interface ClientsPageClientProps {
   clients: StaffClient[];

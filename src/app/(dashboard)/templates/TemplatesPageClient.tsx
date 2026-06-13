@@ -15,17 +15,33 @@ export function TemplatesPageClient({ templates }: TemplatesPageClientProps) {
   const [isDesktop, setIsDesktop] = useState(true);
 
   useEffect(() => {
-    setIsDesktop(window.matchMedia('(min-width: 1024px)').matches);
+    window.setTimeout(() => {
+      setIsDesktop(window.matchMedia('(min-width: 1024px)').matches);
+    }, 0);
   }, []);
 
   useEffect(() => {
     if (!selectedTemplateId) return;
 
-    setLoading(true);
+    let cancelled = false;
+    window.setTimeout(() => {
+      if (!cancelled) setLoading(true);
+    }, 0);
+
     getEmailTemplate(selectedTemplateId)
-      .then(setTemplateDetail)
-      .catch(() => setTemplateDetail(null))
-      .finally(() => setLoading(false));
+      .then((detail) => {
+        if (!cancelled) setTemplateDetail(detail);
+      })
+      .catch(() => {
+        if (!cancelled) setTemplateDetail(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedTemplateId]);
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);

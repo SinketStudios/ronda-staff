@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import NextImage from 'next/image';
 import { CategoryDropdown } from './CategoryDropdown';
 import { ToastContainer, useToast } from '@/components/Toast';
 import {
@@ -234,6 +235,24 @@ export function LibraryPageClient() {
     });
   };
 
+  async function loadImages() {
+    try {
+      const imgs = await getImages();
+      setImages(imgs);
+    } catch (error) {
+      console.error('Failed to load images:', error);
+    }
+  }
+
+  async function loadCategories() {
+    try {
+      const cats = await getCategories();
+      setCategories(cats);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  }
+
   const handleUpload = async () => {
     if (!uploadData.title || !uploadData.categoryId) {
       addToast('Título y categoría son obligatorios', 'error');
@@ -302,31 +321,19 @@ export function LibraryPageClient() {
   };
 
   useEffect(() => {
-    loadImages();
+    const timeout = window.setTimeout(() => {
+      void loadImages();
+    }, 0);
+    return () => clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
     if (!openModal) return;
-    loadCategories();
+    const timeout = window.setTimeout(() => {
+      void loadCategories();
+    }, 0);
+    return () => clearTimeout(timeout);
   }, [openModal]);
-
-  const loadImages = async () => {
-    try {
-      const imgs = await getImages();
-      setImages(imgs);
-    } catch (error) {
-      console.error('Failed to load images:', error);
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const cats = await getCategories();
-      setCategories(cats);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-    }
-  };
 
   useEffect(() => {
     if (!isEditing || !containerRef.current || !imgRef.current) return;
@@ -351,13 +358,15 @@ export function LibraryPageClient() {
     };
 
     // Calcular cuando la imagen se carga
-    if (imgRef.current.complete) {
+    const img = imgRef.current;
+
+    if (img.complete) {
       calculateMinScale();
     }
 
-    imgRef.current.addEventListener('load', calculateMinScale);
+    img.addEventListener('load', calculateMinScale);
     return () => {
-      imgRef.current?.removeEventListener('load', calculateMinScale);
+      img.removeEventListener('load', calculateMinScale);
     };
   }, [isEditing, imageUrl]);
 
@@ -416,7 +425,7 @@ export function LibraryPageClient() {
         .then(setCategories)
         .catch(() => {});
     }
-  }, [isEditingImage]);
+  }, [isEditingImage, categories.length]);
 
   return (
     <div className="flex min-h-full flex-col gap-4 lg:h-full lg:flex-row lg:gap-5 lg:overflow-hidden">
@@ -496,11 +505,14 @@ export function LibraryPageClient() {
                   className="group relative cursor-pointer overflow-hidden rounded-lg bg-ronda-bg"
                 >
                   <div className="overflow-hidden rounded-lg">
-                    <div className="aspect-square overflow-hidden">
-                      <img
+                    <div className="relative aspect-square overflow-hidden">
+                      <NextImage
                         src={img.imageUrl}
                         alt={img.title}
-                        className="h-full w-full object-cover transition hover:scale-105"
+                        fill
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+                        unoptimized
+                        className="object-cover transition hover:scale-105"
                       />
                     </div>
                     <div className="p-3">
@@ -543,11 +555,14 @@ export function LibraryPageClient() {
                     <div className="grid gap-5 lg:grid-cols-[400px_1fr] lg:gap-6">
                       {/* Vista previa del recorte */}
                       <div className="min-w-0">
-                        <div className="aspect-square w-full max-w-[400px] overflow-hidden rounded-lg bg-ronda-bg">
-                          <img
+                        <div className="relative aspect-square w-full max-w-[400px] overflow-hidden rounded-lg bg-ronda-bg">
+                          <NextImage
                             src={imageUrl}
                             alt="Preview"
-                            className="w-full h-full object-contain"
+                            fill
+                            sizes="400px"
+                            unoptimized
+                            className="object-contain"
                             style={{
                               transform: `translate(${imageOffset.x}px, ${imageOffset.y}px) scale(${cropScale / 100})`,
                               transformOrigin: 'center',
@@ -651,12 +666,15 @@ export function LibraryPageClient() {
                 ) : isEditing && imageUrl ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-6">
                     <div className="flex items-center justify-center select-none">
-                      <div ref={containerRef} className="aspect-square w-[min(400px,calc(100vw-48px))] shrink-0 overflow-hidden rounded-lg bg-ronda-bg">
-                        <img
+                      <div ref={containerRef} className="relative aspect-square w-[min(400px,calc(100vw-48px))] shrink-0 overflow-hidden rounded-lg bg-ronda-bg">
+                        <NextImage
                           ref={imgRef}
                           src={imageUrl}
                           alt="Preview"
-                          className={`w-full h-full object-contain ${isDraggingImage ? 'cursor-grabbing' : 'cursor-grab'}`}
+                          fill
+                          sizes="400px"
+                          unoptimized
+                          className={`object-contain ${isDraggingImage ? 'cursor-grabbing' : 'cursor-grab'}`}
                           onMouseDown={handleImageMouseDown}
                           draggable={false}
                           style={{
@@ -812,10 +830,13 @@ export function LibraryPageClient() {
             <div className="flex h-dvh w-full flex-col overflow-hidden rounded-t-2xl border border-ronda-border bg-ronda-surface shadow-xl sm:h-[90vh] sm:max-w-6xl sm:rounded-2xl lg:h-[80vh] lg:flex-row lg:overflow-visible">
               {/* Imagen - Izquierda */}
               <div className="flex min-h-0 flex-1 items-center justify-center bg-black/20 p-4 sm:p-6">
-                <img
+                <NextImage
                   src={selectedImage.imageUrl}
                   alt={selectedImage.title}
-                  className="max-w-full max-h-full object-contain rounded-lg"
+                  width={1024}
+                  height={1024}
+                  unoptimized
+                  className="max-h-full w-auto max-w-full rounded-lg object-contain"
                 />
               </div>
 
@@ -1048,7 +1069,7 @@ export function LibraryPageClient() {
             <div className="bg-ronda-surface rounded-2xl shadow-xl border border-ronda-border max-w-sm p-6">
               <h2 className="text-lg font-semibold text-ronda-text mb-2">Eliminar imagen</h2>
               <p className="text-sm text-ronda-muted mb-6">
-                ¿Estás seguro de que quieres eliminar "{selectedImage.title}"? Esta acción no se puede deshacer.
+                ¿Estás seguro de que quieres eliminar &quot;{selectedImage.title}&quot;? Esta acción no se puede deshacer.
               </p>
               <div className="flex gap-3">
                 <button

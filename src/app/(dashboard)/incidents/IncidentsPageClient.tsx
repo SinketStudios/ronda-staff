@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useEffect, useState } from 'react';
+import NextImage from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
 import { closeSupportTicket, fetchSupportTickets, replySupportTicket, type SupportTicket } from '@/lib/api';
@@ -443,7 +444,7 @@ export function IncidentsPageClient({ initialTickets }: { initialTickets: Suppor
                                 className="group relative block h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-ronda-border bg-ronda-bg transition hover:border-ronda-gold/60"
                               >
                                 {isImage ? (
-                                  <img src={att.url} alt={att.filename} className="h-full w-full object-cover" />
+                                  <NextImage src={att.url} alt={att.filename} fill sizes="56px" unoptimized className="object-cover" />
                                 ) : (
                                   <div className="flex h-full w-full items-center justify-center bg-white">
                                     <span className="text-[11px] font-semibold tracking-wide text-ronda-muted">.{att.filename.split('.').pop()?.toLowerCase()}</span>
@@ -520,7 +521,7 @@ export function IncidentsPageClient({ initialTickets }: { initialTickets: Suppor
                     {attachedFiles.map(({ file, preview }, i) => (
                       <div key={i} className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-ronda-border bg-ronda-bg">
                         {preview ? (
-                          <img src={preview} alt={file.name} className="h-full w-full object-cover" />
+                          <NextImage src={preview} alt={file.name} fill sizes="56px" unoptimized className="object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-white">
                             <span className="text-[11px] font-semibold tracking-wide text-ronda-muted">.{file.name.split('.').pop()?.toLowerCase()}</span>
@@ -709,7 +710,7 @@ export function IncidentsPageClient({ initialTickets }: { initialTickets: Suppor
                             return (
                               <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" title={att.filename} className="group relative block h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-ronda-border bg-ronda-bg transition hover:border-ronda-gold/60">
                                 {isImage ? (
-                                  <img src={att.url} alt={att.filename} className="h-full w-full object-cover" />
+                                  <NextImage src={att.url} alt={att.filename} fill sizes="56px" unoptimized className="object-cover" />
                                 ) : (
                                   <div className="flex h-full w-full items-center justify-center bg-white">
                                     <span className="text-[11px] font-semibold tracking-wide text-ronda-muted">.{att.filename.split('.').pop()?.toLowerCase()}</span>
@@ -763,7 +764,7 @@ export function IncidentsPageClient({ initialTickets }: { initialTickets: Suppor
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {attachedFiles.map(({ file, preview }, i) => (
                         <div key={i} className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-ronda-border bg-ronda-bg">
-                          {preview ? <img src={preview} alt={file.name} className="h-full w-full object-cover" /> : (
+                          {preview ? <NextImage src={preview} alt={file.name} fill sizes="56px" unoptimized className="object-cover" /> : (
                             <div className="flex h-full w-full items-center justify-center bg-white">
                               <span className="text-[11px] font-semibold tracking-wide text-ronda-muted">.{file.name.split('.').pop()?.toLowerCase()}</span>
                             </div>

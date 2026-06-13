@@ -106,7 +106,7 @@ export function CategoryDropdown({
                 onClick={handleAddCategory}
                 className="w-full px-3 py-2 text-sm text-left rounded-lg bg-ronda-gold/10 text-ronda-gold hover:bg-ronda-gold/20 transition font-semibold"
               >
-                + Crear "{search}"
+                + Crear &quot;{search}&quot;
               </button>
             </div>
           )}

@@ -17,14 +17,16 @@ export function LoginClient() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(LDAP_STORAGE_KEY);
-    if (saved) {
-      setSavedLdap(saved);
-      setEmployeeCode(saved);
-    }
-    const savedN = localStorage.getItem(NAME_STORAGE_KEY);
-    if (savedN) setSavedName(savedN);
-    setHydrated(true);
+    window.setTimeout(() => {
+      const saved = localStorage.getItem(LDAP_STORAGE_KEY);
+      if (saved) {
+        setSavedLdap(saved);
+        setEmployeeCode(saved);
+      }
+      const savedN = localStorage.getItem(NAME_STORAGE_KEY);
+      if (savedN) setSavedName(savedN);
+      setHydrated(true);
+    }, 0);
   }, []);
 
   function handleForget() {

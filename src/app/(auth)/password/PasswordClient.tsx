@@ -81,7 +81,7 @@ interface PasswordClientProps {
   employeeCode: string;
 }
 
-export function PasswordClient({ token, name, employeeCode }: PasswordClientProps) {
+export function PasswordClient({ token, name }: PasswordClientProps) {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

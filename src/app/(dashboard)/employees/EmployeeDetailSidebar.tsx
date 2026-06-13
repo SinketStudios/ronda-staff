@@ -29,20 +29,29 @@ interface EmployeeDetailSidebarProps {
 export function EmployeeDetailSidebar({ employee, onClose }: EmployeeDetailSidebarProps) {
   const router = useRouter();
   const [fullEmployee, setFullEmployee] = useState<StaffEmployee | null>(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!employee?.id) {
-      setFullEmployee(null);
+      window.setTimeout(() => {
+        if (!cancelled) setFullEmployee(null);
+      }, 0);
       return;
     }
 
-    setLoading(true);
     getStaffEmployee(employee.id)
-      .then(setFullEmployee)
-      .catch(() => setFullEmployee(employee))
-      .finally(() => setLoading(false));
-  }, [employee?.id]);
+      .then((nextEmployee) => {
+        if (!cancelled) setFullEmployee(nextEmployee);
+      })
+      .catch(() => {
+        if (!cancelled) setFullEmployee(employee);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [employee]);
 
   const displayEmployee = fullEmployee || employee;
 

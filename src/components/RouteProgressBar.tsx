@@ -11,8 +11,10 @@ export function RouteProgressBar() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    setIsVisible(true);
-    setProgress(10);
+    const startTimeout = window.setTimeout(() => {
+      setIsVisible(true);
+      setProgress(10);
+    }, 0);
 
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -24,18 +26,24 @@ export function RouteProgressBar() {
     }, 200);
 
     return () => {
+      clearTimeout(startTimeout);
       clearInterval(interval);
     };
   }, [pathname]);
 
   useEffect(() => {
     if (!isTransitioning && isVisible && progress > 0) {
-      setProgress(100);
+      const completeTimeout = window.setTimeout(() => {
+        setProgress(100);
+      }, 0);
       const timeout = setTimeout(() => {
         setIsVisible(false);
         setProgress(0);
       }, 300);
-      return () => clearTimeout(timeout);
+      return () => {
+        clearTimeout(completeTimeout);
+        clearTimeout(timeout);
+      };
     }
   }, [isTransitioning, isVisible, progress]);
 

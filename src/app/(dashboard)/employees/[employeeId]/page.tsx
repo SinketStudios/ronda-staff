@@ -9,10 +9,12 @@ interface EmployeePageProps {
 export default async function EmployeePage({ params }: EmployeePageProps) {
   const { employeeId } = await params;
 
+  let employee;
   try {
-    const employee = await getStaffEmployee(employeeId);
-    return <EmployeeDetailPage employee={employee} />;
+    employee = await getStaffEmployee(employeeId);
   } catch {
     notFound();
   }
+
+  return <EmployeeDetailPage employee={employee} />;
 }
