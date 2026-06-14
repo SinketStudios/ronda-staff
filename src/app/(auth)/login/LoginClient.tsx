@@ -111,7 +111,7 @@ export function LoginClient() {
                   id="code"
                   type="text"
                   inputMode="numeric"
-                  placeholder="50012345"
+                  placeholder="500XXXXX"
                   value={employeeCode}
                   onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
                   maxLength={8}
@@ -130,6 +130,7 @@ export function LoginClient() {
               <input
                 id="password"
                 type="password"
+                placeholder="Tu contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"

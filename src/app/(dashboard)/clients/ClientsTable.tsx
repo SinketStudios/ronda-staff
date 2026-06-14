@@ -42,22 +42,7 @@ const planNames: Record<string, string> = {
 function formatSubscriptionStatus(status: string | null) {
   return status
     ? subscriptionStatus[status] ?? { label: status, className: 'bg-ronda-bg text-ronda-muted' }
-    : { label: 'Sin suscripcion', className: 'bg-ronda-bg text-ronda-muted' };
-}
-
-function formatPlan(client: StaffClient) {
-  const subscription = client.subscription;
-  const suffix = subscription.billingCycle === 'annual' ? 'anual' : subscription.billingCycle === 'monthly' ? 'mensual' : 'sin ciclo';
-  const price = subscription.amountCents
-    ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: (subscription.currency || 'eur').toUpperCase() }).format(subscription.amountCents / 100)
-    : '-';
-
-  return {
-    name: subscription.planName || 'Sin plan',
-    price,
-    cycle: suffix,
-    source: 'Locales',
-  };
+    : { label: 'Sin suscripción', className: 'bg-ronda-bg text-ronda-muted' };
 }
 
 function formatRestaurantSubscription(subscription: RestaurantBillingSubscription | null) {
@@ -67,8 +52,87 @@ function formatRestaurantSubscription(subscription: RestaurantBillingSubscriptio
   return { planName, cycle, statusData };
 }
 
-function getBillingIssueCount(client: StaffClient) {
+function getSubscriptionIssueCount(client: StaffClient) {
   return (client.restaurants ?? []).filter((restaurant) => !operationalSubscriptionStatuses.has(restaurant.subscription?.status ?? '')).length;
+}
+
+function getLocalCountLabel(count: number) {
+  return `${count} ${count === 1 ? 'local' : 'locales'}`;
+}
+
+function getPlanSummary(client: StaffClient) {
+  const restaurants = client.restaurants ?? [];
+  const counts = new Map<string, number>();
+
+  restaurants.forEach((restaurant) => {
+    const localBilling = formatRestaurantSubscription(restaurant.subscription);
+    const key = restaurant.subscription?.planId
+      ? `${localBilling.planName} ${localBilling.cycle}`
+      : 'Sin plan';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  });
+
+  const entries = [...counts.entries()];
+  if (entries.length === 0) return { title: 'Sin locales', detail: 'No hay planes contratados' };
+
+  return {
+    title: entries.map(([name, count]) => `${count} ${name}`).join(', '),
+    detail: entries.length === 1 ? 'Mismo plan en todos los locales' : `${entries.length} combinaciones de plan`,
+  };
+}
+
+function getSubscriptionStatusSummary(client: StaffClient) {
+  const restaurants = client.restaurants ?? [];
+  const counts = new Map<string | null, number>();
+
+  restaurants.forEach((restaurant) => {
+    const status = restaurant.subscription?.status ?? null;
+    counts.set(status, (counts.get(status) ?? 0) + 1);
+  });
+
+  const entries = [...counts.entries()];
+  if (entries.length === 0) return { primary: formatSubscriptionStatus(null), detail: 'Sin locales' };
+
+  const priority = ['restricted', 'past_due', 'unpaid', 'incomplete', 'pending_payment', 'trialing', 'active', null];
+  const primaryStatus = priority.find((status) => counts.has(status)) ?? entries[0][0];
+  const primary = formatSubscriptionStatus(primaryStatus);
+  const detail = entries
+    .map(([status, count]) => `${count} ${formatSubscriptionStatus(status).label.toLowerCase()}`)
+    .join(', ');
+
+  return { primary, detail };
+}
+
+function getPaymentStatusSummary(client: StaffClient) {
+  const restaurants = client.restaurants ?? [];
+  const counts = new Map<StaffClient['paymentStatus'], number>();
+
+  restaurants.forEach((restaurant) => {
+    counts.set(restaurant.paymentStatus, (counts.get(restaurant.paymentStatus) ?? 0) + 1);
+  });
+
+  if (counts.size === 0) {
+    return {
+      primaryStatus: client.paymentStatus,
+      detail: 'Sin locales',
+    };
+  }
+
+  const priority: StaffClient['paymentStatus'][] = ['restricted', 'pending', 'not_configured', 'active'];
+  const primaryStatus = priority.find((status) => counts.has(status)) ?? client.paymentStatus;
+  const detail = [...counts.entries()]
+    .map(([status, count]) => `${count} ${statusLabel[status].toLowerCase()}`)
+    .join(', ');
+
+  return { primaryStatus, detail };
+}
+
+function clientMatchesSubscriptionStatus(client: StaffClient, status: string) {
+  return (client.restaurants ?? []).some((restaurant) => (restaurant.subscription?.status ?? null) === status);
+}
+
+function clientMatchesPaymentStatus(client: StaffClient, status: StaffClient['paymentStatus']) {
+  return (client.restaurants ?? []).some((restaurant) => restaurant.paymentStatus === status) || client.paymentStatus === status;
 }
 
 interface ClientsTableProps {
@@ -95,10 +159,11 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
         client.email,
         client.owner.name,
         client.owner.email,
+        ...(client.restaurants ?? []).flatMap((restaurant) => [restaurant.name, restaurant.city, restaurant.portalSubdomain]),
       ].some((value) => value?.toLowerCase().includes(normalizedQuery));
 
-      const matchesPlanStatus = planStatus === 'all' || client.subscription.status === planStatus;
-      const matchesPaymentStatus = paymentStatus === 'all' || client.paymentStatus === paymentStatus;
+      const matchesPlanStatus = planStatus === 'all' || clientMatchesSubscriptionStatus(client, planStatus);
+      const matchesPaymentStatus = paymentStatus === 'all' || clientMatchesPaymentStatus(client, paymentStatus as StaffClient['paymentStatus']);
 
       return matchesQuery && matchesPlanStatus && matchesPaymentStatus;
     });
@@ -122,13 +187,13 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
           <input
             value={query}
             onChange={(event) => updateFilter(() => setQuery(event.target.value))}
-            placeholder="Organizacion, propietario, email..."
+          placeholder="Organización, local, propietario, email..."
             className="min-h-10 rounded-lg bg-ronda-surface px-3 text-sm font-medium normal-case text-ronda-text outline-none border border-ronda-border placeholder:text-ronda-muted/60 transition focus:ring-2 focus:ring-ronda-gold focus:border-ronda-gold"
           />
         </label>
 
         <label className="grid gap-1.5 text-xs font-semibold uppercase text-ronda-muted">
-          Estado plan
+          Estado suscripción
           <select
             value={planStatus}
             onChange={(event) => updateFilter(() => setPlanStatus(event.target.value))}
@@ -184,13 +249,13 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
 
       {/* Table Block - Border, white background, rounded, internal scroll */}
       <section className="hidden min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface lg:flex">
-        <div className="grid shrink-0 grid-cols-[1.25fr_1fr_0.95fr_0.75fr_1fr_6rem] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
-          <span>Organizacion</span>
-          <span>Suscripcion</span>
-          <span>Estado plan</span>
+        <div className="grid shrink-0 grid-cols-[1.15fr_1fr_1.15fr_1fr_0.9fr_1fr] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
+          <span>Organización</span>
+          <span>Locales</span>
+          <span>Planes por local</span>
+          <span>Suscripciones</span>
           <span>Cobros</span>
           <span>Propietario</span>
-          <span className="text-right">Locales</span>
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">
@@ -199,15 +264,17 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
           ) : (
             <div className="divide-y divide-ronda-border">
               {pageItems.map((client) => {
-                const plan = formatPlan(client);
-                const planStatusData = formatSubscriptionStatus(client.subscription.status);
-                const billingIssueCount = getBillingIssueCount(client);
+                const planSummary = getPlanSummary(client);
+                const subscriptionSummary = getSubscriptionStatusSummary(client);
+                const paymentSummary = getPaymentStatusSummary(client);
+                const subscriptionIssueCount = getSubscriptionIssueCount(client);
+                const primaryRestaurant = client.primaryRestaurant;
 
                 return (
                   <button
                     key={client.id}
                     onClick={() => onSelectClient(client)}
-                    className="grid grid-cols-[1.25fr_1fr_0.95fr_0.75fr_1fr_6rem] items-center gap-4 px-4 py-4 text-sm transition hover:bg-ronda-bg/60 bg-ronda-surface text-left w-full border-none cursor-pointer"
+                    className="grid grid-cols-[1.15fr_1fr_1.15fr_1fr_0.9fr_1fr] items-center gap-4 px-4 py-4 text-sm transition hover:bg-ronda-bg/60 bg-ronda-surface text-left w-full border-none cursor-pointer"
                   >
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-ronda-text">{client.name}</p>
@@ -215,28 +282,35 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-ronda-text">{plan.name}</p>
-                      <p className="truncate text-xs text-ronda-muted">{plan.price} - {plan.cycle} - {plan.source}</p>
+                      <p className="font-semibold text-ronda-coffee">{getLocalCountLabel(client.restaurantsCount)}</p>
+                      <p className="truncate text-xs text-ronda-muted">{primaryRestaurant ? `${primaryRestaurant.name}${primaryRestaurant.city ? ` · ${primaryRestaurant.city}` : ''}` : 'Sin local principal'}</p>
                     </div>
 
-                    <span className={`w-fit rounded-lg px-2.5 py-1 text-xs font-semibold ${planStatusData.className}`}>
-                      {planStatusData.label}
-                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-ronda-text">{planSummary.title}</p>
+                      <p className="truncate text-xs text-ronda-muted">{planSummary.detail}</p>
+                    </div>
 
-                    <span className={`w-fit rounded-lg px-2.5 py-1 text-xs font-semibold ${statusClass[client.paymentStatus]}`}>
-                      {statusLabel[client.paymentStatus]}
-                    </span>
+                    <div className="min-w-0">
+                      <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${subscriptionSummary.primary.className}`}>
+                        {subscriptionSummary.primary.label}
+                      </span>
+                      <p className="mt-1 truncate text-xs text-ronda-muted">{subscriptionSummary.detail}</p>
+                      {subscriptionIssueCount > 0 ? (
+                        <p className="mt-1 text-xs font-semibold text-ronda-error">{subscriptionIssueCount} requieren revisión</p>
+                      ) : null}
+                    </div>
+
+                    <div className="min-w-0">
+                      <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${statusClass[paymentSummary.primaryStatus]}`}>
+                        {statusLabel[paymentSummary.primaryStatus]}
+                      </span>
+                      <p className="mt-1 truncate text-xs text-ronda-muted">{paymentSummary.detail}</p>
+                    </div>
 
                     <div className="min-w-0">
                       <p className="truncate font-medium text-ronda-text">{client.owner.name}</p>
                       <p className="truncate text-xs text-ronda-muted">{client.owner.email}</p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="font-semibold text-ronda-coffee">{client.restaurantsCount}</p>
-                      {billingIssueCount > 0 ? (
-                        <p className="text-xs font-semibold text-ronda-error">{billingIssueCount} billing</p>
-                      ) : null}
                     </div>
                   </button>
                 );
@@ -253,9 +327,10 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
           </div>
         ) : (
           pageItems.map((client) => {
-            const plan = formatPlan(client);
-            const planStatusData = formatSubscriptionStatus(client.subscription.status);
-            const billingIssueCount = getBillingIssueCount(client);
+            const planSummary = getPlanSummary(client);
+            const subscriptionSummary = getSubscriptionStatusSummary(client);
+            const paymentSummary = getPaymentStatusSummary(client);
+            const subscriptionIssueCount = getSubscriptionIssueCount(client);
             const primaryLocalBilling = formatRestaurantSubscription(client.primaryRestaurant?.subscription ?? null);
 
             return (
@@ -270,27 +345,27 @@ export function ClientsTable({ clients, onSelectClient }: ClientsTableProps) {
                     <p className="truncate font-semibold text-ronda-text">{client.name}</p>
                     <p className="mt-1 truncate text-xs text-ronda-muted">{client.legalName || client.taxId || client.email || 'Sin datos fiscales'}</p>
                   </div>
-                  <span className="shrink-0 text-sm font-semibold text-ronda-coffee">{client.restaurantsCount} locales</span>
+                  <span className="shrink-0 text-sm font-semibold text-ronda-coffee">{getLocalCountLabel(client.restaurantsCount)}</span>
                 </div>
                 <div className="mt-3 grid gap-2">
-                  <p className="truncate text-sm font-semibold text-ronda-text">{plan.name}</p>
-                  <p className="truncate text-xs text-ronda-muted">{plan.price} - {plan.cycle} - {plan.source}</p>
+                  <p className="truncate text-sm font-semibold text-ronda-text">{planSummary.title}</p>
+                  <p className="truncate text-xs text-ronda-muted">{planSummary.detail}</p>
                   {client.primaryRestaurant ? (
                     <p className="truncate text-xs text-ronda-muted">
-                      Local principal: {primaryLocalBilling.planName} - {primaryLocalBilling.cycle}
+                      Local principal: {client.primaryRestaurant.name} · {primaryLocalBilling.planName} · {primaryLocalBilling.cycle}
                     </p>
                   ) : null}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${planStatusData.className}`}>
-                    {planStatusData.label}
+                  <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${subscriptionSummary.primary.className}`}>
+                    {subscriptionSummary.primary.label}
                   </span>
-                  <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${statusClass[client.paymentStatus]}`}>
-                    {statusLabel[client.paymentStatus]}
+                  <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${statusClass[paymentSummary.primaryStatus]}`}>
+                    Cobros: {statusLabel[paymentSummary.primaryStatus]}
                   </span>
-                  {billingIssueCount > 0 ? (
+                  {subscriptionIssueCount > 0 ? (
                     <span className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-ronda-error">
-                      {billingIssueCount} locales con billing
+                      {subscriptionIssueCount} locales con revisión
                     </span>
                   ) : null}
                 </div>
