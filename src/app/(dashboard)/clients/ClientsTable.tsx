@@ -34,6 +34,7 @@ const subscriptionStatus: Record<string, { label: string; className: string }> =
 
 const operationalSubscriptionStatuses = new Set(['active', 'trialing']);
 const planNames: Record<string, string> = {
+  demo: 'Demo',
   starter: 'Starter',
   pro: 'Pro',
   business: 'Business',

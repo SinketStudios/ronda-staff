@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import type { RestaurantBillingSubscription, StaffClient } from '@/lib/api';
+import { ClientDeleteButton } from '../ClientDeleteButton';
 
 const statusLabel: Record<StaffClient['paymentStatus'], string> = {
   not_configured: 'Sin configurar',
@@ -32,6 +33,7 @@ const subscriptionStatus: Record<string, { label: string; className: string }> =
 };
 
 const planNames: Record<string, string> = {
+  demo: 'Demo',
   starter: 'Starter',
   pro: 'Pro',
   business: 'Business',
@@ -100,6 +102,7 @@ export function ClientDetailPage({ client }: ClientDetailPageProps) {
             </div>
           </div>
         </div>
+        <ClientDeleteButton client={client} />
       </header>
 
       {/* Content Grid */}

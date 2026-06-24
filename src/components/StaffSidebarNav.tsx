@@ -10,6 +10,9 @@ const baseNavItems = [
   { href: '/incidents', label: 'Incidencias' },
   { href: '/employees', label: 'Empleados' },
   { href: '/templates', label: 'Plantillas' },
+  ...(process.env.NEXT_PUBLIC_ENABLE_STAFF_AUTOMATIONS === 'true'
+    ? [{ href: '/automations', label: 'Automatizaciones' }]
+    : []),
 ];
 
 export function StaffSidebarNav({ variant = 'desktop' }: { variant?: 'desktop' | 'mobile' }) {

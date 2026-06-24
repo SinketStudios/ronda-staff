@@ -80,6 +80,59 @@ export type StaffClient = {
   restaurants?: StaffClientRestaurant[];
 };
 
+export type CreateStaffClientInput = {
+  organizationName: string;
+  legalName?: string;
+  companyType?: string;
+  taxId?: string;
+  phone?: string;
+  country?: string;
+  ownerName: string;
+  ownerEmail: string;
+  planId: 'demo' | 'starter' | 'pro' | 'business';
+  billingCycle: 'monthly' | 'annual';
+  trialDays?: number;
+};
+
+export type AutomationStatus = 'draft' | 'active' | 'paused';
+
+export type StaffAutomationWorkflow = {
+  id: string;
+  restaurantId: string | null;
+  restaurant: { id: string; name: string; portalSubdomain: string } | null;
+  name: string;
+  description: string | null;
+  status: AutomationStatus;
+  nodes: unknown;
+  edges: unknown;
+  createdByStaffId: string | null;
+  createdByStaff: { id: string; name: string; employeeCode: string } | null;
+  runs: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StaffAutomationRun = {
+  id: string;
+  workflowId: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  input: unknown;
+  output: unknown | null;
+  error: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+  logs: Array<{
+    id: string;
+    runId: string;
+    nodeId: string | null;
+    level: 'info' | 'warn' | 'error';
+    message: string;
+    data: unknown | null;
+    createdAt: string;
+  }>;
+};
+
 export async function loginStaff(employeeCode: string, password: string): Promise<StaffMember> {
   try {
     const res = await fetch(`${API_URL}/staff/auth/login`, {
@@ -168,6 +221,133 @@ export async function getStaffClient(clientId: string): Promise<StaffClient> {
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
     throw new Error(`No se pudo cargar el cliente${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function createStaffClient(input: CreateStaffClientInput): Promise<StaffClient> {
+  const res = await fetch(`${API_URL}/staff/clients`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo crear el cliente (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function deleteStaffClient(clientId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/staff/clients/${clientId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo eliminar el cliente (${res.status})`);
+  }
+}
+
+export async function getStaffAutomations(): Promise<StaffAutomationWorkflow[]> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/automations`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudieron cargar las automatizaciones${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function getStaffAutomation(id: string): Promise<StaffAutomationWorkflow> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/automations/${id}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudo cargar la automatizacion${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function createStaffAutomation(input: {
+  name: string;
+  description?: string;
+  restaurantId?: string | null;
+  status?: AutomationStatus;
+  nodes?: unknown;
+  edges?: unknown;
+}): Promise<StaffAutomationWorkflow> {
+  const res = await fetch(`${API_URL}/staff/automations`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo crear la automatizacion (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function updateStaffAutomation(
+  id: string,
+  input: {
+    name?: string;
+    description?: string | null;
+    restaurantId?: string | null;
+    status?: AutomationStatus;
+    nodes?: unknown;
+    edges?: unknown;
+  },
+): Promise<StaffAutomationWorkflow> {
+  const res = await fetch(`${API_URL}/staff/automations/${id}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo guardar la automatizacion (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function runStaffAutomation(id: string, input: unknown = {}): Promise<StaffAutomationRun> {
+  const res = await fetch(`${API_URL}/staff/automations/${id}/run`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo ejecutar la automatizacion (${res.status})`);
   }
 
   return res.json();
