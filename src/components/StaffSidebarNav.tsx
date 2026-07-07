@@ -10,6 +10,7 @@ const baseNavItems = [
   { href: '/incidents', label: 'Incidencias' },
   { href: '/employees', label: 'Empleados' },
   { href: '/templates', label: 'Plantillas' },
+  { href: '/infrastructure', label: 'Infraestructura' },
   ...(process.env.NEXT_PUBLIC_ENABLE_STAFF_AUTOMATIONS === 'true'
     ? [{ href: '/automations', label: 'Automatizaciones' }]
     : []),

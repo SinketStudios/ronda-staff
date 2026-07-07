@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export function proxy(request: NextRequest) {
   const sessionToken = request.cookies.get('ronda_staff_session');
   const { pathname } = request.nextUrl;
-  const protectedPaths = ['/dashboard', '/clients', '/library', '/incidents', '/employees', '/logs'];
+  const protectedPaths = ['/dashboard', '/clients', '/library', '/incidents', '/employees', '/infrastructure', '/logs'];
   const authPaths = ['/login', '/recovery', '/password', '/setup'];
 
   if (!sessionToken && protectedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {

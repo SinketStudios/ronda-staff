@@ -160,11 +160,11 @@ export async function loginStaff(employeeCode: string, password: string): Promis
 
 export async function logoutStaff(): Promise<void> {
   try {
-    const cookieHeader = await getServerCookieHeader();
+  const cookieHeader = await getServerCookieHeader();
     await fetch(`${API_URL}/staff/auth/logout`, {
       method: 'POST',
       credentials: 'include',
-      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
     });
   } catch (error) {
     console.error('Logout error:', error);
@@ -173,11 +173,11 @@ export async function logoutStaff(): Promise<void> {
 
 export async function getStaffMe(): Promise<StaffMember | null> {
   try {
-    const cookieHeader = await getServerCookieHeader();
+  const cookieHeader = await getServerCookieHeader();
     const res = await fetch(`${API_URL}/staff/auth/me`, {
       method: 'GET',
       credentials: 'include',
-      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
       cache: 'no-store',
     });
 
@@ -710,5 +710,207 @@ export async function getEmailTemplate(id: string): Promise<EmailTemplateDetail>
     throw new Error(`Failed to fetch email template: ${res.status}`);
   }
 
+  return res.json();
+}
+
+export type InfrastructureStatus = 'running' | 'degraded' | 'stopped' | 'unknown';
+
+export type InfrastructureNode = {
+  id: string;
+  kind: 'endpoint' | 'ingress' | 'server' | 'service' | 'workload' | 'database';
+  label: string;
+  subtitle: string;
+  status: InfrastructureStatus;
+  layer: number;
+  details: Record<string, string | number | boolean | null>;
+};
+
+export type InfrastructureTopology = {
+  generatedAt: string;
+  cluster: {
+    name: string;
+    status: InfrastructureStatus;
+    serverCount: number;
+    readyServerCount: number;
+    runningWorkloadCount: number;
+  };
+  nodes: InfrastructureNode[];
+  edges: Array<{ id: string; source: string; target: string; label: string }>;
+};
+
+export type InfrastructureDeploymentJob = {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+};
+
+export type InfrastructureDeploymentRun = {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  branch: string;
+  commitSha: string;
+  commitShortSha: string;
+  commitMessage: string;
+  actor: string | null;
+  event: string;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+  durationSeconds: number | null;
+  jobs: InfrastructureDeploymentJob[];
+};
+
+export type InfrastructureApiRuntimeDeployment = {
+  name: 'api-public' | 'api-core';
+  namespace: string;
+  image: string | null;
+  desiredReplicas: number;
+  readyReplicas: number;
+  availableReplicas: number;
+  updatedReplicas: number;
+  status: InfrastructureStatus;
+  strategy: {
+    type: string | null;
+    maxUnavailable: string | number | null;
+    maxSurge: string | number | null;
+  };
+};
+
+export type InfrastructureDeploymentsOverview = {
+  generatedAt: string;
+  repository: string;
+  workflow: string;
+  branch: string;
+  activeImage: string | null;
+  activeCommitSha: string | null;
+  activeCommitShortSha: string | null;
+  healthcheckUrl: string;
+  health: {
+    status: 'healthy' | 'unhealthy' | 'unknown';
+    checkedAt: string;
+    latencyMs: number | null;
+    detail: string | null;
+  };
+  runtime: InfrastructureApiRuntimeDeployment[];
+  latestRun: InfrastructureDeploymentRun | null;
+  recentRuns: InfrastructureDeploymentRun[];
+  github: {
+    configured: boolean;
+    status: 'ok' | 'not_configured' | 'error';
+    detail: string | null;
+  };
+};
+
+export async function getInfrastructureTopology(): Promise<InfrastructureTopology> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/internal/infrastructure/topology`, {
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) throw new Error(`No se pudo cargar la infraestructura (${res.status})`);
+  return res.json();
+}
+
+export async function fetchInfrastructureTopology(): Promise<InfrastructureTopology> {
+  const res = await fetch(`${API_URL}/internal/infrastructure/topology`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+
+  if (!res.ok) throw new Error(`No se pudo actualizar la infraestructura (${res.status})`);
+  return res.json();
+}
+
+export async function getInfrastructureDeployments(): Promise<InfrastructureDeploymentsOverview> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/internal/infrastructure/deployments`, {
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) throw new Error(`No se pudo cargar el estado de despliegues (${res.status})`);
+  return res.json();
+}
+
+export async function fetchInfrastructureDeployments(): Promise<InfrastructureDeploymentsOverview> {
+  const res = await fetch(`${API_URL}/internal/infrastructure/deployments`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+
+  if (!res.ok) throw new Error(`No se pudo actualizar el estado de despliegues (${res.status})`);
+  return res.json();
+}
+
+export function watchInfrastructureDeployments(
+  onDeployments: (deployments: InfrastructureDeploymentsOverview) => void,
+  onConnectionChange: (connected: boolean) => void,
+) {
+  const stream = new EventSource(`${API_URL}/internal/infrastructure/deployments/watch`, { withCredentials: true });
+  stream.onopen = () => onConnectionChange(true);
+  stream.onmessage = (event) => {
+    try {
+      onDeployments(JSON.parse(event.data) as InfrastructureDeploymentsOverview);
+    } catch {
+      onConnectionChange(false);
+    }
+  };
+  stream.onerror = () => onConnectionChange(false);
+  return () => stream.close();
+}
+
+export function watchInfrastructureTopology(
+  onTopology: (topology: InfrastructureTopology) => void,
+  onConnectionChange: (connected: boolean) => void,
+) {
+  const stream = new EventSource(`${API_URL}/internal/infrastructure/watch`, { withCredentials: true });
+  stream.onopen = () => onConnectionChange(true);
+  stream.onmessage = (event) => {
+    try {
+      onTopology(JSON.parse(event.data) as InfrastructureTopology);
+    } catch {
+      onConnectionChange(false);
+    }
+  };
+  stream.onerror = () => onConnectionChange(false);
+  return () => stream.close();
+}
+
+export type InfrastructureLogs = {
+  generatedAt: string;
+  nodeId: string;
+  podCount: number;
+  entries: Array<{ namespace: string; pod: string; container: string; content: string }>;
+};
+
+export async function fetchInfrastructureLogs(nodeId: string): Promise<InfrastructureLogs> {
+  const params = new URLSearchParams({ nodeId });
+  const res = await fetch(`${API_URL}/internal/infrastructure/logs?${params}`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`No se pudieron cargar los logs (${res.status})`);
+  return res.json();
+}
+
+export async function restartInfrastructureNode(nodeId: string): Promise<{ restartedAt: string; workloads: string[] }> {
+  const res = await fetch(`${API_URL}/internal/infrastructure/restart`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ nodeId }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.message || `No se pudo reiniciar (${res.status})`);
+  }
   return res.json();
 }
