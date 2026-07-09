@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
+@import "leaflet/dist/leaflet.css";
 
 :root {
   --ronda-bg: #faf7f0;
@@ -62,4 +63,110 @@ a[href],
 select,
 [role="button"] {
   cursor: pointer;
+}
+
+.sales-map-admin-boundary {
+  cursor: pointer;
+}
+
+.sales-map-city-marker {
+  cursor: pointer;
+}
+
+.sales-map-tooltip {
+  border: 1px solid var(--ronda-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ronda-coffee);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 10px 30px rgba(36, 22, 12, 0.12);
+}
+
+.sales-map-client-pin-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.sales-map-client-pin {
+  display: block;
+  width: 36px;
+  height: 48px;
+  overflow: visible;
+  filter: drop-shadow(0 8px 14px rgba(36, 22, 12, 0.32));
+}
+
+.sales-map-client-pin path {
+  fill: var(--ronda-coffee);
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.sales-map-client-pin text {
+  fill: #ffffff;
+  font-size: 16px;
+  font-family: var(--font-ronda-strong), var(--font-geist-sans), Arial, sans-serif;
+  dominant-baseline: middle;
+}
+
+.sales-map-cluster-pin-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.sales-map-cluster-pin {
+  display: block;
+  width: 36px;
+  height: 48px;
+  overflow: visible;
+  filter: drop-shadow(0 8px 14px rgba(36, 22, 12, 0.32));
+}
+
+.sales-map-cluster-pin path {
+  fill: var(--ronda-coffee);
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.sales-map-cluster-pin text {
+  fill: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  dominant-baseline: middle;
+}
+
+.sales-map-search-pin-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.sales-map-search-pin {
+  display: block;
+  width: 36px;
+  height: 48px;
+  overflow: visible;
+  filter: drop-shadow(0 8px 14px rgba(58, 20, 12, 0.34));
+}
+
+.sales-map-search-pin path {
+  fill: #b84a3a;
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.sales-map-search-pin text {
+  fill: #ffffff;
+  font-size: 16px;
+  font-family: var(--font-ronda-strong), var(--font-geist-sans), Arial, sans-serif;
+  dominant-baseline: middle;
+}
+
+.sales-map-client-popup .leaflet-popup-content {
+  color: var(--ronda-coffee);
+  font-size: 12px;
+  line-height: 1.5;
 }

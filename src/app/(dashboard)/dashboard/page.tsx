@@ -8,6 +8,12 @@ const areas = [
     meta: 'CRM interno',
   },
   {
+    href: '/sales-map',
+    title: 'Mapa comercial',
+    description: 'Zonas comerciales de Espana para seguimiento y expansion.',
+    meta: 'Comerciales',
+  },
+  {
     href: '/library',
     title: 'Biblioteca',
     description: 'Recursos de producto, imagenes y material comercial.',
@@ -34,7 +40,7 @@ export default async function DashboardPage() {
         </p>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {areas.map((area) => (
           <a
             key={area.href}

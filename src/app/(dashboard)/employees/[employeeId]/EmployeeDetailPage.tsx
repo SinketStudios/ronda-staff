@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { StaffEmployee } from '@/lib/api';
-import { sendEmployeeTestEmail } from '@/lib/api';
+import { resendEmployeeInvitation } from '@/lib/api';
 
 const roleColors: Record<string, string> = {
   staff: 'bg-ronda-muted/10 text-ronda-muted',
@@ -34,7 +34,7 @@ export function EmployeeDetailPage({ employee }: EmployeeDetailPageProps) {
     setSending(true);
     setEmailStatus('idle');
     try {
-      await sendEmployeeTestEmail(employee.id);
+      await resendEmployeeInvitation(employee.id);
       setEmailStatus('sent');
     } catch {
       setEmailStatus('error');
@@ -72,7 +72,7 @@ export function EmployeeDetailPage({ employee }: EmployeeDetailPageProps) {
               disabled={sending}
               className="min-h-10 rounded-lg border border-ronda-border px-4 text-sm font-semibold text-ronda-text transition hover:bg-ronda-bg disabled:opacity-50"
             >
-              {sending ? 'Enviando...' : 'Enviar correo de prueba'}
+              {sending ? 'Enviando...' : 'Reenviar invitacion'}
             </button>
           )}
           <button
@@ -87,7 +87,7 @@ export function EmployeeDetailPage({ employee }: EmployeeDetailPageProps) {
 
       {emailStatus === 'sent' && (
         <div className="shrink-0 rounded-lg border border-ronda-success/30 bg-ronda-success/10 px-4 py-3">
-          <p className="text-sm font-medium text-ronda-success">Correo enviado a {employee.personalEmail}</p>
+          <p className="text-sm font-medium text-ronda-success">Invitacion reenviada a {employee.personalEmail}</p>
         </div>
       )}
       {emailStatus === 'error' && (

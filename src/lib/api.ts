@@ -43,6 +43,7 @@ export type RestaurantBillingSubscription = {
 export type StaffClientRestaurant = {
   id: string;
   name: string;
+  address: string | null;
   city: string | null;
   portalSubdomain: string;
   paymentStatus: 'not_configured' | 'pending' | 'active' | 'restricted';
@@ -712,6 +713,8 @@ export async function getEmailTemplate(id: string): Promise<EmailTemplateDetail>
 
   return res.json();
 }
+
+export const resendEmployeeInvitation = sendEmployeeTestEmail;
 
 export type InfrastructureStatus = 'running' | 'degraded' | 'stopped' | 'unknown';
 

@@ -44,6 +44,18 @@ const PAGES: SearchResult[] = [
     ),
   },
   {
+    id: 'sales-map',
+    title: 'Mapa comercial',
+    type: 'page',
+    subtitle: 'Zonas comerciales de Espana para comerciales',
+    href: '/sales-map',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3zM9 3v15m6-12v15" />
+      </svg>
+    ),
+  },
+  {
     id: 'library',
     title: 'Biblioteca',
     type: 'page',

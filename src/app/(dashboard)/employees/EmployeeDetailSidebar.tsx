@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { StaffEmployee } from '@/lib/api';
-import { getStaffEmployee } from '@/lib/api';
+import { getStaffEmployee, resendEmployeeInvitation } from '@/lib/api';
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -29,6 +29,8 @@ interface EmployeeDetailSidebarProps {
 export function EmployeeDetailSidebar({ employee, onClose }: EmployeeDetailSidebarProps) {
   const router = useRouter();
   const [fullEmployee, setFullEmployee] = useState<StaffEmployee | null>(null);
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState<'idle' | 'sent' | 'error'>('idle');
 
   useEffect(() => {
     let cancelled = false;
@@ -37,8 +39,11 @@ export function EmployeeDetailSidebar({ employee, onClose }: EmployeeDetailSideb
       window.setTimeout(() => {
         if (!cancelled) setFullEmployee(null);
       }, 0);
+      setInviteStatus('idle');
       return;
     }
+
+    setInviteStatus('idle');
 
     getStaffEmployee(employee.id)
       .then((nextEmployee) => {
@@ -56,6 +61,20 @@ export function EmployeeDetailSidebar({ employee, onClose }: EmployeeDetailSideb
   const displayEmployee = fullEmployee || employee;
 
   if (!displayEmployee) return null;
+
+  async function handleResendInvite() {
+    if (!displayEmployee?.id) return;
+    setSendingInvite(true);
+    setInviteStatus('idle');
+    try {
+      await resendEmployeeInvitation(displayEmployee.id);
+      setInviteStatus('sent');
+    } catch {
+      setInviteStatus('error');
+    } finally {
+      setSendingInvite(false);
+    }
+  }
 
   return (
     <aside className="w-full h-full flex flex-col border-l border-ronda-border bg-ronda-surface overflow-hidden rounded-lg">
@@ -143,6 +162,24 @@ export function EmployeeDetailSidebar({ employee, onClose }: EmployeeDetailSideb
                 </div>
               )}
             </div>
+            {displayEmployee.personalEmail && (
+              <div className="mt-4 space-y-2">
+                <button
+                  type="button"
+                  onClick={handleResendInvite}
+                  disabled={sendingInvite}
+                  className="min-h-10 w-full rounded-lg border border-ronda-border px-4 text-sm font-semibold text-ronda-text transition hover:bg-ronda-bg disabled:opacity-50"
+                >
+                  {sendingInvite ? 'Enviando...' : 'Reenviar invitacion'}
+                </button>
+                {inviteStatus === 'sent' && (
+                  <p className="text-xs font-semibold text-ronda-success">Invitacion reenviada a {displayEmployee.personalEmail}</p>
+                )}
+                {inviteStatus === 'error' && (
+                  <p className="text-xs font-semibold text-ronda-error">No se pudo reenviar la invitacion.</p>
+                )}
+              </div>
+            )}
           </section>
         )}
 
