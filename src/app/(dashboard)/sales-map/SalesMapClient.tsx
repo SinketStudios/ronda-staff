@@ -14,6 +14,7 @@ const softSpainBounds: LatLngBoundsExpression = [
   [45.4, 6.4],
 ];
 const geocodeCachePrefix = 'ronda-sales-map-geocode:v1:';
+const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 type RestaurantMarker = {
   id: string;
@@ -28,11 +29,26 @@ type RestaurantMarker = {
 type RestaurantSearchItem = Omit<RestaurantMarker, 'lat' | 'lng'>;
 
 type SearchResult = {
-  lat: number;
-  lng: number;
+  id: string;
+  lat?: number;
+  lng?: number;
   label: string;
+  secondaryLabel?: string;
   popupHtml: string;
+  placeId?: string;
+  address?: string;
+  city?: string;
+  restaurantName?: string;
+  clientName?: string;
+  provider: 'restaurant' | 'google' | 'nominatim';
 };
+
+declare global {
+  interface Window {
+    google?: any;
+    __rondaGoogleMapsPromise?: Promise<boolean>;
+  }
+}
 
 type AdminProperties = {
   name?: string;
@@ -129,6 +145,97 @@ async function geocodeAddress(address: string, city: string) {
   return { lat, lng, cached: false };
 }
 
+async function loadGooglePlaces() {
+  if (!googleMapsApiKey || typeof window === 'undefined') return false;
+  if (window.google?.maps?.places) return true;
+  if (window.__rondaGoogleMapsPromise) return window.__rondaGoogleMapsPromise;
+
+  window.__rondaGoogleMapsPromise = new Promise((resolve) => {
+    const existingScript = document.getElementById('ronda-google-maps');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(Boolean(window.google?.maps?.places)), { once: true });
+      existingScript.addEventListener('error', () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'ronda-google-maps';
+    script.async = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsApiKey)}&libraries=places&loading=async`;
+    script.onload = () => resolve(Boolean(window.google?.maps?.places));
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+
+  return window.__rondaGoogleMapsPromise;
+}
+
+async function getGooglePlacePredictions(query: string): Promise<SearchResult[]> {
+  const loaded = await loadGooglePlaces();
+  if (!loaded || !window.google?.maps?.places) return [];
+
+  const service = new window.google.maps.places.AutocompleteService();
+  return new Promise((resolve) => {
+    service.getPlacePredictions(
+      {
+        input: query,
+        componentRestrictions: { country: 'es' },
+        types: ['geocode'],
+      },
+      (predictions: any[] | null, status: string) => {
+        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !predictions) {
+          resolve([]);
+          return;
+        }
+
+        resolve(
+          predictions.slice(0, 6).map((prediction) => ({
+            id: `google:${prediction.place_id}`,
+            label: prediction.structured_formatting?.main_text || prediction.description,
+            secondaryLabel: prediction.structured_formatting?.secondary_text || prediction.description,
+            popupHtml: `<strong>${escapeHtml(prediction.description)}</strong>`,
+            placeId: prediction.place_id,
+            provider: 'google',
+          })),
+        );
+      },
+    );
+  });
+}
+
+async function getGooglePlaceDetails(result: SearchResult): Promise<SearchResult | null> {
+  if (!result.placeId) return result;
+  const loaded = await loadGooglePlaces();
+  if (!loaded || !window.google?.maps?.places) return null;
+
+  const placesService = new window.google.maps.places.PlacesService(document.createElement('div'));
+  return new Promise((resolve) => {
+    placesService.getDetails(
+      {
+        placeId: result.placeId,
+        fields: ['geometry', 'formatted_address', 'name'],
+      },
+      (place: any | null, status: string) => {
+        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place?.geometry?.location) {
+          resolve(null);
+          return;
+        }
+
+        const label = place.name || result.label;
+        const address = place.formatted_address || result.secondaryLabel || result.label;
+        resolve({
+          ...result,
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          label,
+          secondaryLabel: address,
+          popupHtml: `<strong>${escapeHtml(label)}</strong><br>${escapeHtml(address)}`,
+        });
+      },
+    );
+  });
+}
+
 async function geocodeSearchResults(query: string): Promise<SearchResult[]> {
   const params = new URLSearchParams({
     format: 'jsonv2',
@@ -149,10 +256,12 @@ async function geocodeSearchResults(query: string): Promise<SearchResult[]> {
     const label = result.display_name || query;
     return [
       {
+        id: `nominatim:${lat}:${lng}:${label}`,
         lat,
         lng,
         label,
         popupHtml: `<strong>${escapeHtml(query)}</strong><br>${escapeHtml(label)}`,
+        provider: 'nominatim',
       },
     ];
   });
@@ -160,6 +269,22 @@ async function geocodeSearchResults(query: string): Promise<SearchResult[]> {
 
 function getSearchText(marker: RestaurantSearchItem) {
   return `${marker.restaurantName} ${marker.clientName} ${marker.address} ${marker.city}`.toLocaleLowerCase('es-ES');
+}
+
+function buildRestaurantSearchResult(marker: RestaurantSearchItem & { lat?: number; lng?: number }): SearchResult {
+  return {
+    id: `restaurant:${marker.id}`,
+    lat: marker.lat,
+    lng: marker.lng,
+    label: marker.restaurantName,
+    secondaryLabel: `${marker.address}, ${marker.city}`,
+    popupHtml: `<strong>${escapeHtml(marker.restaurantName)}</strong><br>${escapeHtml(marker.clientName)}<br>${escapeHtml(marker.address)}<br>${escapeHtml(marker.city)}`,
+    address: marker.address,
+    city: marker.city,
+    restaurantName: marker.restaurantName,
+    clientName: marker.clientName,
+    provider: 'restaurant',
+  };
 }
 
 function wait(ms: number) {
@@ -391,7 +516,58 @@ export function SalesMapClient() {
     };
   }, []);
 
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      const normalizedQuery = query.toLocaleLowerCase('es-ES');
+      const restaurantMatches = [
+        ...markerDataRef.current.map(buildRestaurantSearchResult),
+        ...restaurantSearchRef.current.map(buildRestaurantSearchResult),
+      ]
+        .filter((result, index, results) => results.findIndex((item) => item.id === result.id) === index)
+        .filter((result) =>
+          `${result.label} ${result.clientName ?? ''} ${result.address ?? ''} ${result.city ?? ''}`.toLocaleLowerCase('es-ES').includes(normalizedQuery),
+        )
+        .slice(0, 4);
+
+      const googleMatches = restaurantMatches.length >= 4 ? [] : await getGooglePlacePredictions(query);
+      if (!cancelled) {
+        setSearchResults([...restaurantMatches, ...googleMatches].slice(0, 8));
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchQuery]);
+
   const focusSearchResult = async (result: SearchResult) => {
+    let resolvedResult = result;
+    if (result.placeId) {
+      const googleResult = await getGooglePlaceDetails(result);
+      if (!googleResult) {
+        setSearchStatus('No se ha podido obtener la ubicacion exacta.');
+        return;
+      }
+      resolvedResult = googleResult;
+    } else if ((result.lat === undefined || result.lng === undefined) && result.address && result.city) {
+      const coordinates = await geocodeAddress(result.address, result.city);
+      if (!coordinates) {
+        setSearchStatus('No se ha podido obtener la ubicacion exacta.');
+        return;
+      }
+      resolvedResult = { ...result, lat: coordinates.lat, lng: coordinates.lng };
+    }
+
+    if (resolvedResult.lat === undefined || resolvedResult.lng === undefined) return;
+
       const L = await import('leaflet');
       const map = mapRef.current;
       const searchLayer = searchLayerRef.current;
@@ -411,12 +587,12 @@ export function SalesMapClient() {
       });
 
       searchLayer.clearLayers();
-      L.marker([result.lat, result.lng], { icon: searchIcon })
-        .bindPopup(result.popupHtml, { className: 'sales-map-client-popup' })
+      L.marker([resolvedResult.lat, resolvedResult.lng], { icon: searchIcon })
+        .bindPopup(resolvedResult.popupHtml, { className: 'sales-map-client-popup' })
         .addTo(searchLayer)
         .openPopup();
-      map.setView([result.lat, result.lng], map.getMaxZoom(), { animate: true });
-      setSearchStatus(result.label);
+      map.setView([resolvedResult.lat, resolvedResult.lng], map.getMaxZoom(), { animate: true });
+      setSearchStatus(resolvedResult.label);
     setSearchResults([]);
   };
 
@@ -436,29 +612,17 @@ export function SalesMapClient() {
         markerMatch ?? restaurantSearchRef.current.find((restaurant) => getSearchText(restaurant).includes(normalizedQuery));
 
       if (markerMatch) {
-        await focusSearchResult({
-          lat: markerMatch.lat,
-          lng: markerMatch.lng,
-          label: markerMatch.restaurantName,
-          popupHtml: `<strong>${escapeHtml(markerMatch.restaurantName)}</strong><br>${escapeHtml(markerMatch.clientName)}<br>${escapeHtml(markerMatch.address)}<br>${escapeHtml(markerMatch.city)}`,
-        });
+        await focusSearchResult(buildRestaurantSearchResult(markerMatch));
         return;
       }
 
       if (restaurantMatch) {
-        const coordinates = await geocodeAddress(restaurantMatch.address, restaurantMatch.city);
-        if (coordinates) {
-          await focusSearchResult({
-            lat: coordinates.lat,
-            lng: coordinates.lng,
-            label: restaurantMatch.restaurantName,
-            popupHtml: `<strong>${escapeHtml(restaurantMatch.restaurantName)}</strong><br>${escapeHtml(restaurantMatch.clientName)}<br>${escapeHtml(restaurantMatch.address)}<br>${escapeHtml(restaurantMatch.city)}`,
-          });
-          return;
-        }
+        await focusSearchResult(buildRestaurantSearchResult(restaurantMatch));
+        return;
       }
 
-      const results = await geocodeSearchResults(query);
+      const googleResults = await getGooglePlacePredictions(query);
+      const results = googleResults.length > 0 ? googleResults : await geocodeSearchResults(query);
       if (results.length === 0) {
         setSearchStatus('No se ha encontrado ningun resultado.');
       } else if (results.length === 1) {
@@ -507,7 +671,7 @@ export function SalesMapClient() {
               <div className="mt-2 max-h-72 overflow-y-auto rounded-md border border-ronda-border bg-ronda-surface shadow-lg">
                 {searchResults.map((result) => (
                   <button
-                    key={`${result.lat}:${result.lng}:${result.label}`}
+                    key={result.id}
                     type="button"
                     onClick={() => {
                       setSearchQuery(result.label);
@@ -515,7 +679,10 @@ export function SalesMapClient() {
                     }}
                     className="block w-full border-b border-ronda-border px-3 py-2 text-left text-xs font-semibold leading-5 text-ronda-text transition last:border-b-0 hover:bg-ronda-bg"
                   >
-                    {result.label}
+                    <span className="block truncate">{result.label}</span>
+                    {result.secondaryLabel ? (
+                      <span className="mt-0.5 block truncate font-medium text-ronda-muted">{result.secondaryLabel}</span>
+                    ) : null}
                   </button>
                 ))}
               </div>
