@@ -42,7 +42,7 @@ const planNames: Record<string, string> = {
 function formatSubscriptionStatus(status: string | null) {
   return status
     ? subscriptionStatus[status] ?? { label: status, className: 'bg-ronda-bg text-ronda-muted' }
-    : { label: 'Sin suscripcion', className: 'bg-ronda-bg text-ronda-muted' };
+    : { label: 'Sin suscripción', className: 'bg-ronda-bg text-ronda-muted' };
 }
 
 function formatPlan(client: StaffClient) {
@@ -153,7 +153,7 @@ export function ClientDetailSidebar({ client, onClose }: ClientDetailSidebarProp
             )}
             {client.phone && (
               <div>
-                <p className="text-xs text-ronda-muted">Telefono</p>
+                <p className="text-xs text-ronda-muted">Teléfono</p>
                 <p className="text-sm text-ronda-text">{client.phone}</p>
               </div>
             )}

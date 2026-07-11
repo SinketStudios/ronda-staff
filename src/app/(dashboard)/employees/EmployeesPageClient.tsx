@@ -41,7 +41,7 @@ export function EmployeesPageClient({ employees }: EmployeesPageClientProps) {
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold text-ronda-text sm:text-3xl">Empleados</h1>
             <p className="mt-2 text-sm text-ronda-muted">
-              Gestion interna de empleados y permisos del equipo de Ronda.
+              Gestión interna de empleados y permisos del equipo de Ronda.
             </p>
           </div>
           <button
@@ -68,7 +68,7 @@ export function EmployeesPageClient({ employees }: EmployeesPageClientProps) {
 
         <section className="hidden min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-ronda-surface outline outline-1 -outline-offset-1 outline-ronda-border lg:flex">
           <div className="grid shrink-0 grid-cols-[9rem_1fr_1fr_9rem_8rem_9rem] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
-            <span>Codigo</span>
+            <span>Código</span>
             <span>Nombre</span>
             <span>Email</span>
             <span>Rol</span>

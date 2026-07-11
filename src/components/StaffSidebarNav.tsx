@@ -6,6 +6,7 @@ import { useDashboard } from '@/app/(dashboard)/DashboardContext';
 const baseNavItems = [
   { href: '/dashboard', label: 'Panel' },
   { href: '/clients', label: 'Clientes' },
+  { href: '/contacts', label: 'Contactos' },
   { href: '/sales-map', label: 'Mapa comercial' },
   { href: '/library', label: 'Biblioteca' },
   { href: '/incidents', label: 'Incidencias' },

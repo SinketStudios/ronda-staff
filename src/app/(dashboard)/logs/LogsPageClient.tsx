@@ -92,15 +92,15 @@ export function LogsPageClient({ initialData }: LogsPageClientProps) {
   const { data, total, page, totalPages } = initialData;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-lg bg-ronda-surface outline outline-1 -outline-offset-1 outline-ronda-border overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-ronda-surface outline outline-1 -outline-offset-1 outline-ronda-border">
       {/* Filter bar */}
-      <div className="border-b border-ronda-border px-6 py-4 flex flex-wrap gap-3 items-end shrink-0">
-        <div className="flex flex-col gap-1">
+      <div className="grid shrink-0 gap-3 border-b border-ronda-border px-4 py-4 sm:grid-cols-2 sm:px-6 lg:flex lg:flex-wrap lg:items-end">
+        <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs font-semibold uppercase text-ronda-muted">Acción</label>
           <select
             value={filters.action}
             onChange={(e) => applyFilters({ action: e.target.value })}
-            className="rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text"
+            className="min-h-10 rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text"
           >
             <option value="">Todas</option>
             {Object.entries(ACTION_LABELS).map(([k, v]) => (
@@ -112,12 +112,12 @@ export function LogsPageClient({ initialData }: LogsPageClientProps) {
         </div>
 
         {/* Endpoint Dropdown */}
-        <div className="flex flex-col gap-1 relative" ref={endpointDropdownRef}>
+        <div className="relative flex min-w-0 flex-col gap-1" ref={endpointDropdownRef}>
           <label className="text-xs font-semibold uppercase text-ronda-muted">Endpoint</label>
-          <div className="relative w-64">
+          <div className="relative w-full lg:w-64">
             <button
               onClick={() => setShowEndpointDropdown(!showEndpointDropdown)}
-              className="w-full rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text text-left flex items-center justify-between hover:bg-ronda-bg/60"
+              className="flex min-h-10 w-full items-center justify-between rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-left text-sm text-ronda-text hover:bg-ronda-bg/60"
             >
               <span className="truncate">{filters.endpoint || 'Todos'}</span>
               <svg className="w-4 h-4 text-ronda-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,23 +173,23 @@ export function LogsPageClient({ initialData }: LogsPageClientProps) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs font-semibold uppercase text-ronda-muted">Desde</label>
           <input
             type="date"
             value={filters.dateFrom}
             onChange={(e) => applyFilters({ dateFrom: e.target.value })}
-            className="rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text"
+            className="min-h-10 rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text"
           />
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs font-semibold uppercase text-ronda-muted">Hasta</label>
           <input
             type="date"
             value={filters.dateTo}
             onChange={(e) => applyFilters({ dateTo: e.target.value })}
-            className="rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text"
+            className="min-h-10 rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-text"
           />
         </div>
 
@@ -197,7 +197,7 @@ export function LogsPageClient({ initialData }: LogsPageClientProps) {
         <button
           onClick={handleRefresh}
           disabled={isPending}
-          className="rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm font-semibold text-ronda-muted hover:bg-ronda-surface disabled:opacity-40 transition flex items-center gap-2 h-10"
+          className="flex h-10 items-center justify-center gap-2 rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm font-semibold text-ronda-muted transition hover:bg-ronda-surface disabled:opacity-40"
         >
           <svg
             className={`w-4 h-4 ${isPending ? 'animate-spin' : ''}`}
@@ -210,7 +210,7 @@ export function LogsPageClient({ initialData }: LogsPageClientProps) {
           Actualizar
         </button>
 
-        <div className="flex items-end ml-auto">
+        <div className="flex items-end sm:col-span-2 lg:ml-auto">
           <p className="text-sm text-ronda-muted">
             {total} registro{total !== 1 ? 's' : ''}
             {isPending && <span className="ml-2 animate-pulse">Cargando...</span>}
@@ -219,7 +219,7 @@ export function LogsPageClient({ initialData }: LogsPageClientProps) {
       </div>
 
       {/* Table */}
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-ronda-surface border-b border-ronda-border">
             <tr>
@@ -248,9 +248,19 @@ export function LogsPageClient({ initialData }: LogsPageClientProps) {
         </table>
       </div>
 
+      <div className="grid min-h-0 flex-1 gap-3 overflow-auto p-3 lg:hidden">
+        {data.length === 0 ? (
+          <div className="rounded-lg border border-ronda-border bg-ronda-bg px-4 py-10 text-center text-sm text-ronda-muted">
+            Sin registros
+          </div>
+        ) : (
+          data.map((entry) => <LogCard key={entry.id} entry={entry} />)
+        )}
+      </div>
+
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="border-t border-ronda-border px-6 py-4 flex justify-between items-center shrink-0">
+        <div className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-ronda-border px-4 py-4 sm:flex sm:justify-between sm:px-6">
           <button
             disabled={page <= 1}
             onClick={() => applyFilters({}, page - 1)}
@@ -321,5 +331,49 @@ function LogRow({ entry }: { entry: AuditLogEntry }) {
         </tr>
       )}
     </>
+  );
+}
+
+function LogCard({ entry }: { entry: AuditLogEntry }) {
+  const [expanded, setExpanded] = useState(false);
+  const actionColor = ACTION_COLORS[entry.action] ?? 'bg-gray-50 text-gray-700';
+
+  return (
+    <button
+      type="button"
+      onClick={() => entry.requestBody && setExpanded((value) => !value)}
+      className="rounded-lg border border-ronda-border bg-ronda-surface p-4 text-left shadow-sm transition hover:bg-ronda-bg/60"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-ronda-text">
+            {entry.staffMember ? entry.staffMember.name : 'Desconocido'}
+          </p>
+          <p className="mt-1 text-xs text-ronda-muted">
+            {entry.staffMember?.employeeCode ?? 'Sin codigo'} - {new Date(entry.createdAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${actionColor}`}>
+          {ACTION_LABELS[entry.action] ?? entry.action}
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-2 text-xs">
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-mono font-semibold text-ronda-coffee">{entry.method}</span>
+          <span className={`font-mono font-semibold ${entry.responseStatus >= 400 ? 'text-ronda-error' : 'text-ronda-success'}`}>
+            {entry.responseStatus}
+          </span>
+        </div>
+        <p className="break-all font-mono text-ronda-muted">{entry.endpoint}</p>
+        <p className="font-mono text-ronda-muted">{entry.ip ?? 'Sin IP'}</p>
+      </div>
+
+      {expanded && entry.requestBody ? (
+        <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-ronda-bg p-3 text-xs text-ronda-muted">
+          {JSON.stringify(entry.requestBody, null, 2)}
+        </pre>
+      ) : null}
+    </button>
   );
 }

@@ -770,7 +770,7 @@ export function AutomationWorkflowEditor({ automation }: { automation: StaffAuto
             >
               <div className="flex items-center justify-between border-b border-ronda-border px-4 py-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-ronda-text">Anadir nodo</h2>
+                  <h2 className="text-sm font-semibold text-ronda-text">Añadir nodo</h2>
                   <p className="mt-1 text-xs text-ronda-muted">Elige un bloque para insertarlo en el workflow.</p>
                 </div>
                 <button

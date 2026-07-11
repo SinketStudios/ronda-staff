@@ -51,7 +51,7 @@ export function ClientsPageClient({ clients, onSelectClient }: ClientsPageClient
             onClick={() => setCreateOpen(true)}
             className="min-h-10 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark sm:justify-self-end"
           >
-            Anadir cliente
+            Añadir cliente
           </button>
         </div>
       </header>
@@ -126,7 +126,7 @@ function CreateClientModal({ onClose, onCreated }: { onClose: () => void; onCrea
       <form onSubmit={submit} className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-lg border border-ronda-border bg-ronda-surface p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-ronda-text">Anadir cliente</h2>
+            <h2 className="text-xl font-semibold text-ronda-text">Añadir cliente</h2>
             <p className="mt-1 text-sm text-ronda-muted">Crea la organizacion, propietario y plan asignado.</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-semibold text-ronda-muted transition hover:bg-ronda-bg">
@@ -151,7 +151,7 @@ function CreateClientModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </select>
           </label>
           <Field label="CIF/NIF" value={form.taxId ?? ''} onChange={(value) => update('taxId', value)} />
-          <Field label="Telefono" value={form.phone ?? ''} onChange={(value) => update('phone', value)} />
+          <Field label="Teléfono" value={form.phone ?? ''} onChange={(value) => update('phone', value)} />
           <Field label="Nombre y apellidos" value={form.ownerName} onChange={(value) => update('ownerName', value)} required />
           <Field label="Email" type="email" value={form.ownerEmail} onChange={(value) => update('ownerEmail', value)} required />
           <label className="grid gap-1.5 text-xs font-semibold uppercase text-ronda-muted">
@@ -196,7 +196,7 @@ function CreateClientModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </>
           ) : (
             <div className="rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm text-ronda-muted md:col-span-2">
-              Demo es permanente, no caduca y no crea suscripcion en Stripe. El cliente recibira un email para activar la cuenta y crear su primer local desde el onboarding.
+              Demo es permanente, no caduca y no crea suscripción en Stripe. El cliente recibirá un email para activar la cuenta y crear su primer local desde el onboarding.
             </div>
           )}
         </div>

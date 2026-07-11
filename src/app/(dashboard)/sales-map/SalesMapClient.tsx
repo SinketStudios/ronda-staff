@@ -4,17 +4,25 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { getStaffClients } from '@/lib/api';
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from 'geojson';
 import type { LatLngBoundsExpression, LayerGroup, Map as LeafletMap } from 'leaflet';
+import { Search } from 'lucide-react';
 import type { Topology } from 'topojson-specification';
 import { feature as topojsonFeature } from 'topojson-client';
 
 const spainCenter: [number, number] = [40.4168, -3.7038];
 const minMapZoom = 6;
 const softSpainBounds: LatLngBoundsExpression = [
-  [33.2, -12.4],
+  [26.8, -19.2],
   [45.4, 6.4],
 ];
 const geocodeCachePrefix = 'ronda-sales-map-geocode:v1:';
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const accountPinColors = {
+  real: '#6f4a2f',
+  demo: '#2563eb',
+  trial: '#7c3aed',
+} as const;
+
+type AccountKind = keyof typeof accountPinColors;
 
 type RestaurantMarker = {
   id: string;
@@ -24,6 +32,7 @@ type RestaurantMarker = {
   city: string;
   lat: number;
   lng: number;
+  accountKind: AccountKind;
 };
 
 type RestaurantSearchItem = Omit<RestaurantMarker, 'lat' | 'lng'>;
@@ -55,6 +64,12 @@ type AdminProperties = {
   noml_ccaa?: string;
 };
 
+type AccountSubscription = {
+  planId?: string | null;
+  status?: string | null;
+  currentPeriodEnd?: string | null;
+};
+
 function getFeatureName(feature: Feature<Geometry, AdminProperties>) {
   return feature.properties?.name || feature.properties?.noml_ccaa || 'Zona sin nombre';
 }
@@ -63,6 +78,16 @@ function normalizeName(value: string) {
   return value
     .toLocaleLowerCase('es-ES')
     .replace(/\b\p{L}/gu, (letter) => letter.toLocaleUpperCase('es-ES'));
+}
+
+function getAccountKind(clientSubscription?: AccountSubscription | null, restaurantSubscription?: AccountSubscription | null): AccountKind {
+  const subscription = restaurantSubscription ?? clientSubscription;
+  const planId = subscription?.planId?.toLocaleLowerCase('es-ES') ?? '';
+  const status = subscription?.status?.toLocaleLowerCase('es-ES') ?? '';
+
+  if (status.includes('trial')) return 'trial';
+  if (planId === 'demo') return 'demo';
+  return 'real';
 }
 
 async function loadTopoJsonFeatureCollection(path: string, objectName: string) {
@@ -243,7 +268,7 @@ async function geocodeSearchResults(query: string): Promise<SearchResult[]> {
     countrycodes: 'es',
     addressdetails: '1',
     bounded: '1',
-    viewbox: '-9.7,43.9,4.4,35.8',
+    viewbox: '-18.6,43.9,4.4,27.4',
     q: `${query}, Spain`,
   });
   const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
@@ -312,6 +337,9 @@ export function SalesMapClient() {
   const [searchStatus, setSearchStatus] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [predictionStatus, setPredictionStatus] = useState('');
+  const [areSuggestionsOpen, setAreSuggestionsOpen] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -330,10 +358,12 @@ export function SalesMapClient() {
           maxZoom: 20,
           maxBounds: softSpainBounds,
           maxBoundsViscosity: 0.55,
+          attributionControl: false,
           zoomControl: false,
         });
         mapRef.current = map;
 
+        L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -351,18 +381,19 @@ export function SalesMapClient() {
           return;
         }
 
-        const pinIcon = L.divIcon({
-          className: 'sales-map-client-pin-wrapper',
-          html: `
+        const createPinIcon = (accountKind: AccountKind) =>
+          L.divIcon({
+            className: 'sales-map-client-pin-wrapper',
+            html: `
             <svg class="sales-map-client-pin" viewBox="0 0 36 48" aria-hidden="true">
-              <path d="M18 46C15.4 42.1 5 29.4 5 17.4C5 9.7 10.8 3.5 18 3.5s13 6.2 13 13.9C31 29.4 20.6 42.1 18 46Z" />
+              <path style="fill: ${accountPinColors[accountKind]}" d="M18 46C15.4 42.1 5 29.4 5 17.4C5 9.7 10.8 3.5 18 3.5s13 6.2 13 13.9C31 29.4 20.6 42.1 18 46Z" />
               <text x="18" y="18.2" text-anchor="middle">R</text>
             </svg>
           `,
-          iconSize: [36, 48],
-          iconAnchor: [18, 46],
-          popupAnchor: [0, -42],
-        });
+            iconSize: [36, 48],
+            iconAnchor: [18, 46],
+            popupAnchor: [0, -42],
+          });
 
         const getClusterGridSize = () => {
           const zoom = map.getZoom();
@@ -392,7 +423,7 @@ export function SalesMapClient() {
         searchLayerRef.current = L.layerGroup().addTo(map);
 
         const addRestaurantMarker = (marker: RestaurantMarker) =>
-          L.marker([marker.lat, marker.lng], { icon: pinIcon })
+          L.marker([marker.lat, marker.lng], { icon: createPinIcon(marker.accountKind) })
             .bindPopup(
               `<strong>${escapeHtml(marker.restaurantName)}</strong><br>${escapeHtml(marker.clientName)}<br>${escapeHtml(marker.address)}<br>${escapeHtml(marker.city)}`,
               { className: 'sales-map-client-popup' },
@@ -476,6 +507,7 @@ export function SalesMapClient() {
                   restaurantName: restaurant.name,
                   address: restaurant.address!,
                   city: restaurant.city!,
+                  accountKind: getAccountKind(client.subscription, restaurant.subscription),
                 })),
             );
             restaurantSearchRef.current = restaurants;
@@ -520,10 +552,14 @@ export function SalesMapClient() {
     const query = searchQuery.trim();
     if (query.length < 3) {
       setSearchResults([]);
+      setIsPredicting(false);
+      setPredictionStatus('');
       return;
     }
 
     let cancelled = false;
+    setIsPredicting(true);
+    setPredictionStatus('Buscando sugerencias...');
     const timeoutId = window.setTimeout(async () => {
       const normalizedQuery = query.toLocaleLowerCase('es-ES');
       const restaurantMatches = [
@@ -536,14 +572,25 @@ export function SalesMapClient() {
         )
         .slice(0, 4);
 
-      const googleMatches = restaurantMatches.length >= 4 ? [] : await getGooglePlacePredictions(query);
+      let externalMatches: SearchResult[] = [];
+      if (restaurantMatches.length < 4) {
+        externalMatches = await getGooglePlacePredictions(query);
+        if (externalMatches.length === 0) {
+          externalMatches = await geocodeSearchResults(query);
+        }
+      }
+
       if (!cancelled) {
-        setSearchResults([...restaurantMatches, ...googleMatches].slice(0, 8));
+        const nextResults = [...restaurantMatches, ...externalMatches].slice(0, 8);
+        setSearchResults(nextResults);
+        setPredictionStatus(nextResults.length > 0 ? '' : 'No hay sugerencias para esta busqueda.');
+        setIsPredicting(false);
       }
     }, 250);
 
     return () => {
       cancelled = true;
+      setIsPredicting(false);
       window.clearTimeout(timeoutId);
     };
   }, [searchQuery]);
@@ -568,32 +615,56 @@ export function SalesMapClient() {
 
     if (resolvedResult.lat === undefined || resolvedResult.lng === undefined) return;
 
-      const L = await import('leaflet');
-      const map = mapRef.current;
-      const searchLayer = searchLayerRef.current;
+    const L = await import('leaflet');
+    const map = mapRef.current;
+    const searchLayer = searchLayerRef.current;
     if (!map || !searchLayer) return;
 
-      const searchIcon = L.divIcon({
-        className: 'sales-map-search-pin-wrapper',
-        html: `
+    const searchIcon = L.divIcon({
+      className: 'sales-map-search-pin-wrapper',
+      html: `
           <svg class="sales-map-search-pin" viewBox="0 0 36 48" aria-hidden="true">
             <path d="M18 46C15.4 42.1 5 29.4 5 17.4C5 9.7 10.8 3.5 18 3.5s13 6.2 13 13.9C31 29.4 20.6 42.1 18 46Z" />
             <text x="18" y="18.2" text-anchor="middle">R</text>
           </svg>
         `,
-        iconSize: [36, 48],
-        iconAnchor: [18, 46],
-        popupAnchor: [0, -42],
-      });
+      iconSize: [36, 48],
+      iconAnchor: [18, 46],
+      popupAnchor: [0, -42],
+    });
 
-      searchLayer.clearLayers();
-      L.marker([resolvedResult.lat, resolvedResult.lng], { icon: searchIcon })
-        .bindPopup(resolvedResult.popupHtml, { className: 'sales-map-client-popup' })
-        .addTo(searchLayer)
-        .openPopup();
-      map.setView([resolvedResult.lat, resolvedResult.lng], map.getMaxZoom(), { animate: true });
-      setSearchStatus(resolvedResult.label);
+    searchLayer.clearLayers();
+    L.marker([resolvedResult.lat, resolvedResult.lng], { icon: searchIcon })
+      .bindPopup(resolvedResult.popupHtml, { className: 'sales-map-client-popup' })
+      .addTo(searchLayer)
+      .openPopup();
+    map.setView([resolvedResult.lat, resolvedResult.lng], map.getMaxZoom(), { animate: true });
+    setSearchStatus(resolvedResult.label);
     setSearchResults([]);
+    setAreSuggestionsOpen(false);
+  };
+
+  const getPredictiveSearchResults = async (query: string) => {
+    const normalizedQuery = query.toLocaleLowerCase('es-ES');
+    const restaurantMatches = [
+      ...markerDataRef.current.map(buildRestaurantSearchResult),
+      ...restaurantSearchRef.current.map(buildRestaurantSearchResult),
+    ]
+      .filter((result, index, results) => results.findIndex((item) => item.id === result.id) === index)
+      .filter((result) =>
+        `${result.label} ${result.clientName ?? ''} ${result.address ?? ''} ${result.city ?? ''}`.toLocaleLowerCase('es-ES').includes(normalizedQuery),
+      )
+      .slice(0, 4);
+
+    let externalMatches: SearchResult[] = [];
+    if (restaurantMatches.length < 4) {
+      externalMatches = await getGooglePlacePredictions(query);
+      if (externalMatches.length === 0) {
+        externalMatches = await geocodeSearchResults(query);
+      }
+    }
+
+    return [...restaurantMatches, ...externalMatches].slice(0, 8);
   };
 
   const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
@@ -604,33 +675,20 @@ export function SalesMapClient() {
     setIsSearching(true);
     setSearchStatus('');
     setSearchResults([]);
+    setPredictionStatus('');
+    setAreSuggestionsOpen(false);
 
     try {
-      const normalizedQuery = query.toLocaleLowerCase('es-ES');
-      const markerMatch = markerDataRef.current.find((marker) => getSearchText(marker).includes(normalizedQuery));
-      const restaurantMatch =
-        markerMatch ?? restaurantSearchRef.current.find((restaurant) => getSearchText(restaurant).includes(normalizedQuery));
+      const results = searchResults.length > 0 ? searchResults : await getPredictiveSearchResults(query);
+      const bestResult = results[0];
 
-      if (markerMatch) {
-        await focusSearchResult(buildRestaurantSearchResult(markerMatch));
-        return;
-      }
-
-      if (restaurantMatch) {
-        await focusSearchResult(buildRestaurantSearchResult(restaurantMatch));
-        return;
-      }
-
-      const googleResults = await getGooglePlacePredictions(query);
-      const results = googleResults.length > 0 ? googleResults : await geocodeSearchResults(query);
-      if (results.length === 0) {
+      if (!bestResult) {
         setSearchStatus('No se ha encontrado ningun resultado.');
-      } else if (results.length === 1) {
-        await focusSearchResult(results[0]);
-      } else {
-        setSearchResults(results);
-        setSearchStatus('Elige el resultado correcto.');
+        return;
       }
+
+      setSearchQuery(bestResult.label);
+      await focusSearchResult(bestResult);
     } catch (error) {
       setSearchStatus(error instanceof Error ? error.message : 'No se ha podido buscar.');
     } finally {
@@ -644,37 +702,55 @@ export function SalesMapClient() {
         <div className="absolute inset-0 bg-ronda-bg">
           <form
             onSubmit={handleSearch}
-            className="absolute left-5 top-5 z-[1000] w-[min(25rem,calc(100%-2.5rem))] rounded-lg border border-ronda-border bg-ronda-surface/95 p-2 shadow-lg backdrop-blur"
+            className="absolute left-1/2 top-5 z-[1000] w-[min(21rem,calc(100%-2rem))] -translate-x-1/2 transition-[width] duration-300 ease-out focus-within:w-[min(27rem,calc(100%-2rem))] sm:left-5 sm:w-[min(21rem,calc(100%-2.5rem))] sm:translate-x-0 sm:focus-within:w-[min(27rem,calc(100%-2.5rem))]"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex h-11 items-center gap-2 rounded-full border border-ronda-border bg-ronda-surface/95 py-0 pl-1.5 pr-3 shadow-lg backdrop-blur transition duration-300 ease-out focus-within:border-ronda-coffee focus-within:shadow-xl">
+              <span
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ronda-coffee text-base leading-none text-white"
+                style={{ fontFamily: 'var(--font-ronda-strong), var(--font-geist-sans), Arial, sans-serif' }}
+                aria-hidden="true"
+              >
+                R
+              </span>
               <input
                 value={searchQuery}
                 onChange={(event) => {
                   setSearchQuery(event.target.value);
                   setSearchResults([]);
                   setSearchStatus('');
+                  setPredictionStatus('');
+                  setAreSuggestionsOpen(true);
                 }}
+                onFocus={() => setAreSuggestionsOpen(true)}
                 placeholder="Buscar calle o restaurante"
-                className="min-w-0 flex-1 rounded-md border border-ronda-border bg-ronda-bg px-3 py-2 text-sm font-medium text-ronda-text outline-none transition focus:border-ronda-coffee"
-                type="search"
+                className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ronda-text outline-none placeholder:text-ronda-muted"
+                type="text"
               />
               <button
                 type="submit"
                 disabled={isSearching || !searchQuery.trim()}
-                className="rounded-md bg-ronda-coffee px-3 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+                onMouseDown={(event) => event.preventDefault()}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-coffee disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Buscar"
               >
-                {isSearching ? 'Buscando' : 'Buscar'}
+                <Search className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
             {searchStatus ? <p className="mt-2 px-1 text-xs font-semibold text-ronda-muted">{searchStatus}</p> : null}
-            {searchResults.length > 0 ? (
+            {areSuggestionsOpen && searchQuery.trim().length >= 3 && (isPredicting || predictionStatus || searchResults.length > 0) ? (
               <div className="mt-2 max-h-72 overflow-y-auto rounded-md border border-ronda-border bg-ronda-surface shadow-lg">
+                {isPredicting || predictionStatus ? (
+                  <p className="px-3 py-2 text-xs font-semibold text-ronda-muted">
+                    {isPredicting ? 'Buscando sugerencias...' : predictionStatus}
+                  </p>
+                ) : null}
                 {searchResults.map((result) => (
                   <button
                     key={result.id}
                     type="button"
                     onClick={() => {
                       setSearchQuery(result.label);
+                      setAreSuggestionsOpen(false);
                       void focusSearchResult(result);
                     }}
                     className="block w-full border-b border-ronda-border px-3 py-2 text-left text-xs font-semibold leading-5 text-ronda-text transition last:border-b-0 hover:bg-ronda-bg"
@@ -688,6 +764,35 @@ export function SalesMapClient() {
               </div>
             ) : null}
           </form>
+          <div className="pointer-events-none absolute bottom-7 left-1/2 z-[1000] w-[min(34rem,calc(100%-2.5rem))] -translate-x-1/2 rounded-xl border border-ronda-border bg-ronda-surface/95 p-3 shadow-lg backdrop-blur">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-ronda-muted">Mapa de calor</p>
+                <p className="mt-0.5 text-xs font-semibold text-ronda-text">Potencial comercial</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3 text-[11px] font-semibold text-ronda-muted">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: accountPinColors.real }} />
+                  Real
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: accountPinColors.demo }} />
+                  Demo
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: accountPinColors.trial }} />
+                  Demo activa
+                </span>
+              </div>
+            </div>
+            <div className="mt-3 h-2 rounded-full bg-gradient-to-r from-slate-300 via-amber-400 via-orange-500 to-emerald-500" />
+            <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-ronda-muted">
+              <span>Contacto</span>
+              <span>Conversacion</span>
+              <span>Reunion</span>
+              <span>Alta posibilidad</span>
+            </div>
+          </div>
           <div ref={mapNodeRef} className="absolute inset-0" />
           {loadError ? (
             <div className="absolute inset-0 grid place-items-center bg-ronda-bg p-6">

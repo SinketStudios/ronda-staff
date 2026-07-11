@@ -39,7 +39,7 @@ export function AutomationsPageClient({ initialAutomations }: AutomationsPageCli
 
     try {
       const automation = await createStaffAutomation({
-        name: `Nueva automatizacion ${automations.length + 1}`,
+        name: `Nueva automatización ${automations.length + 1}`,
         description: 'Workflow sin configurar.',
         status: 'draft',
         nodes: [],
@@ -48,7 +48,7 @@ export function AutomationsPageClient({ initialAutomations }: AutomationsPageCli
       setAutomations((current) => [automation, ...current]);
       router.push(`/automations/${automation.id}`);
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : 'No se pudo crear la automatizacion');
+      setError(createError instanceof Error ? createError.message : 'No se pudo crear la automatización');
     } finally {
       setIsCreating(false);
     }
@@ -70,7 +70,7 @@ export function AutomationsPageClient({ initialAutomations }: AutomationsPageCli
           disabled={isCreating}
           className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-ronda-coffee px-5 text-sm font-semibold text-white transition hover:bg-ronda-logo active:scale-[0.98]"
         >
-          {isCreating ? 'Creando...' : 'Crear automatizacion'}
+          {isCreating ? 'Creando...' : 'Crear automatización'}
         </button>
       </header>
 
@@ -97,12 +97,12 @@ export function AutomationsPageClient({ initialAutomations }: AutomationsPageCli
         <div className="grid shrink-0 gap-3 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>
             <h2 className="text-sm font-semibold text-ronda-text">Lista de automatizaciones</h2>
-            <p className="mt-1 text-xs text-ronda-muted">Aqui apareceran los workflows creados para el equipo interno.</p>
+            <p className="mt-1 text-xs text-ronda-muted">Aquí aparecerán los workflows creados para el equipo interno.</p>
           </div>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar automatizacion"
+            placeholder="Buscar automatización"
             className="min-h-10 rounded-lg border border-ronda-border bg-ronda-surface px-3 text-sm text-ronda-text outline-none transition focus:border-ronda-gold sm:w-72"
           />
         </div>
@@ -139,7 +139,7 @@ export function AutomationsPageClient({ initialAutomations }: AutomationsPageCli
                 <div className="mx-auto grid h-14 w-14 place-items-center rounded-lg border border-ronda-border bg-ronda-bg text-xl font-semibold text-ronda-coffee">
                   +
                 </div>
-                <h2 className="mt-4 text-xl font-semibold text-ronda-text">Todavia no hay automatizaciones</h2>
+                <h2 className="mt-4 text-xl font-semibold text-ronda-text">Todavía no hay automatizaciones</h2>
                 <p className="mt-2 text-sm leading-6 text-ronda-muted">
                   Crea la primera para empezar a definir nodos, prompts y ejecuciones en segundo plano.
                 </p>
@@ -149,7 +149,7 @@ export function AutomationsPageClient({ initialAutomations }: AutomationsPageCli
                   disabled={isCreating}
                   className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-ronda-coffee px-5 text-sm font-semibold text-white transition hover:bg-ronda-logo active:scale-[0.98]"
                 >
-                  {isCreating ? 'Creando...' : 'Crear automatizacion'}
+                  {isCreating ? 'Creando...' : 'Crear automatización'}
                 </button>
               </div>
             </div>

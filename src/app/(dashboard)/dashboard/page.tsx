@@ -10,7 +10,7 @@ const areas = [
   {
     href: '/sales-map',
     title: 'Mapa comercial',
-    description: 'Zonas comerciales de Espana para seguimiento y expansion.',
+    description: 'Zonas comerciales de España para seguimiento y expansión.',
     meta: 'Comerciales',
   },
   {

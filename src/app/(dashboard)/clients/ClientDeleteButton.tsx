@@ -65,7 +65,7 @@ export function ClientDeleteButton({ client, onDeleted, variant = 'button' }: Cl
               <div>
                 <h2 className="text-xl font-semibold text-ronda-text">Eliminar cliente</h2>
                 <p className="mt-2 text-sm leading-6 text-ronda-muted">
-                  Se borraran la organizacion, locales, pedidos, mesas, productos, empleados, tickets, suscripciones locales y usuarios exclusivos de este cliente. Esta accion no se puede deshacer.
+                  Se borrarán la organización, locales, pedidos, mesas, productos, empleados, tickets, suscripciones locales y usuarios exclusivos de este cliente. Esta acción no se puede deshacer.
                 </p>
               </div>
               <button

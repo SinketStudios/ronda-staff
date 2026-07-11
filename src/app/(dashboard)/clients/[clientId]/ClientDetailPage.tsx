@@ -42,7 +42,7 @@ const planNames: Record<string, string> = {
 function formatSubscriptionStatus(status: string | null) {
   return status
     ? subscriptionStatus[status] ?? { label: status, className: 'bg-ronda-bg text-ronda-muted' }
-    : { label: 'Sin suscripcion', className: 'bg-ronda-bg text-ronda-muted' };
+    : { label: 'Sin suscripción', className: 'bg-ronda-bg text-ronda-muted' };
 }
 
 function formatPlan(client: StaffClient) {

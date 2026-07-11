@@ -54,7 +54,7 @@ export default async function DashboardLayout({
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-ronda-border bg-ronda-surface/92 backdrop-blur">
+        <div className="safe-top safe-x shrink-0 border-b border-ronda-border bg-ronda-surface/92 backdrop-blur lg:pt-0">
           <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-3 lg:hidden">
             <Logo className="w-[94px]" priority />
             <div className="min-w-0 flex-1">
@@ -70,7 +70,9 @@ export default async function DashboardLayout({
             </div>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 lg:overflow-hidden lg:p-8">{children}</div>
+        <div className="min-h-0 flex-1 overflow-auto px-[calc(1rem+env(safe-area-inset-left))] py-4 pr-[calc(1rem+env(safe-area-inset-right))] pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-[calc(1.5rem+env(safe-area-inset-left))] sm:py-6 sm:pr-[calc(1.5rem+env(safe-area-inset-right))] sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:overflow-hidden lg:px-8 lg:py-8">
+          {children}
+        </div>
       </main>
     </DashboardLayoutClient>
   );

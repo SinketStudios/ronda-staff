@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
+import { PWARegister } from "@/components/PWARegister";
 import { RouteProgressBar } from "@/components/RouteProgressBar";
 import "./globals.css";
 
@@ -21,8 +22,20 @@ const rondaStrong = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Ronda Staff",
+  title: {
+    default: "Ronda Staff",
+    template: "%s | Ronda Staff",
+  },
   description: "Panel interno del equipo de Ronda",
+  applicationName: "Ronda Staff",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Ronda Staff",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
@@ -34,6 +47,14 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#3a2618',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -41,11 +62,12 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="es"
       className={`${geistSans.variable} ${geistMono.variable} ${rondaStrong.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col bg-ronda-bg overscroll-none">
         <RouteProgressBar />
+        <PWARegister />
         {children}
       </body>
     </html>

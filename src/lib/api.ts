@@ -95,6 +95,85 @@ export type CreateStaffClientInput = {
   trialDays?: number;
 };
 
+export type StaffContactStage = 'lead' | 'visited' | 'conversation' | 'meeting' | 'proposal' | 'closed';
+
+export type StaffCommercialContactPerson = {
+  id: string;
+  name: string;
+  role: string | null;
+  phone: string | null;
+  email: string | null;
+  createdAt: string;
+};
+
+export type StaffCommercialContact = {
+  id: string;
+  restaurantName: string;
+  venueType: string | null;
+  contactName: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  lat: number | null;
+  lng: number | null;
+  stage: StaffContactStage;
+  potential: number;
+  owner: string;
+  ownerStaff: { id: string; name: string; employeeCode: string } | null;
+  lastActivity: string | null;
+  createdAt: string;
+  notes: string | null;
+  web: string | null;
+  instagram: string | null;
+  tiktok: string | null;
+  googleMapsUrl: string | null;
+  evaluation: {
+    answers: unknown;
+    score: number;
+    maxScore: number | null;
+    label: string | null;
+    evaluatedAt: string | null;
+  } | null;
+  people: StaffCommercialContactPerson[];
+};
+
+export type CreateStaffCommercialContactInput = {
+  localName: string;
+  venueType?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  location?: {
+    address?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    lat?: number;
+    lng?: number;
+  };
+  web?: string;
+  instagram?: string;
+  tiktok?: string;
+  googleMapsUrl?: string;
+  stage?: StaffContactStage;
+  people?: Array<{
+    name: string;
+    role?: string;
+    phone?: string;
+    email?: string;
+  }>;
+  evaluation?: {
+    answers: Record<string, number>;
+    score: number;
+    maxScore: number;
+    percentage: number;
+    label: string;
+  };
+};
+
 export type AutomationStatus = 'draft' | 'active' | 'paused';
 
 export type StaffAutomationWorkflow = {
@@ -243,6 +322,39 @@ export async function createStaffClient(input: CreateStaffClientInput): Promise<
   return res.json();
 }
 
+export async function getStaffContacts(): Promise<StaffCommercialContact[]> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/contacts`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudieron cargar los contactos${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function createStaffContact(input: CreateStaffCommercialContactInput): Promise<StaffCommercialContact> {
+  const res = await fetch(`${API_URL}/staff/contacts`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo crear el contacto (${res.status})`);
+  }
+
+  return res.json();
+}
+
 export async function deleteStaffClient(clientId: string): Promise<void> {
   const res = await fetch(`${API_URL}/staff/clients/${clientId}`, {
     method: 'DELETE',
@@ -283,7 +395,7 @@ export async function getStaffAutomation(id: string): Promise<StaffAutomationWor
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    throw new Error(`No se pudo cargar la automatizacion${detail ? `: ${detail}` : ''}`);
+    throw new Error(`No se pudo cargar la automatización${detail ? `: ${detail}` : ''}`);
   }
 
   return res.json();
@@ -306,7 +418,7 @@ export async function createStaffAutomation(input: {
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `No se pudo crear la automatizacion (${res.status})`);
+    throw new Error(error.message || `No se pudo crear la automatización (${res.status})`);
   }
 
   return res.json();
@@ -332,7 +444,7 @@ export async function updateStaffAutomation(
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `No se pudo guardar la automatizacion (${res.status})`);
+    throw new Error(error.message || `No se pudo guardar la automatización (${res.status})`);
   }
 
   return res.json();
@@ -348,7 +460,7 @@ export async function runStaffAutomation(id: string, input: unknown = {}): Promi
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `No se pudo ejecutar la automatizacion (${res.status})`);
+    throw new Error(error.message || `No se pudo ejecutar la automatización (${res.status})`);
   }
 
   return res.json();

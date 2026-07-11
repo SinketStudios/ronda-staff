@@ -56,12 +56,12 @@ export function DashboardLayoutClient({ staff, children }: DashboardLayoutClient
   }, []);
 
   if (isCheckingSession) {
-    return <div className="h-screen bg-ronda-bg" />;
+    return <div className="h-screen min-h-dvh bg-ronda-bg" />;
   }
 
   return (
     <DashboardContext.Provider value={{ staff, selectedClient, setSelectedClient, selectedEmployee, setSelectedEmployee }}>
-      <div className="flex h-dvh overflow-hidden bg-ronda-bg text-ronda-text">
+      <div className="flex h-screen min-h-dvh overflow-hidden bg-ronda-bg text-ronda-text">
         {children}
 
         {/* Sidebar - al mismo nivel que el menú izquierdo */}

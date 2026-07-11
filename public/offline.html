@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#3a2618" />
+    <title>Ronda Staff sin conexion</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #faf7f0;
+        --surface: #ffffff;
+        --text: #17140f;
+        --muted: #756e63;
+        --border: #e3d7c5;
+        --coffee: #3a2618;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+          max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(100%, 28rem);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: var(--surface);
+        padding: 1.25rem;
+        box-shadow: 0 18px 40px rgba(36, 22, 12, 0.08);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.25rem;
+        line-height: 1.2;
+        color: var(--coffee);
+      }
+
+      p {
+        margin: 0.75rem 0 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      button {
+        margin-top: 1rem;
+        min-height: 2.75rem;
+        width: 100%;
+        border: 0;
+        border-radius: 999px;
+        background: var(--coffee);
+        color: white;
+        font: inherit;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Sin conexion</h1>
+      <p>No podemos cargar Ronda Staff ahora mismo. Revisa la conexion y vuelve a intentarlo.</p>
+      <button type="button" onclick="window.location.reload()">Reintentar</button>
+    </main>
+  </body>
+</html>
