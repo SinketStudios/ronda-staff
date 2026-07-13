@@ -322,6 +322,20 @@ export async function createStaffClient(input: CreateStaffClientInput): Promise<
   return res.json();
 }
 
+export async function resendStaffClientInvitation(clientId: string): Promise<{ sent: boolean; to: string }> {
+  const res = await fetch(`${API_URL}/staff/clients/${clientId}/invitation/resend`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo reenviar la invitacion (${res.status})`);
+  }
+
+  return res.json();
+}
+
 export async function getStaffContacts(): Promise<StaffCommercialContact[]> {
   const cookieHeader = await getServerCookieHeader();
   const res = await fetch(`${API_URL}/staff/contacts`, {

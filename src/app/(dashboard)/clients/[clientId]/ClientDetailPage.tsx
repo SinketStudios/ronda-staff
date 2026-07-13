@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import type { RestaurantBillingSubscription, StaffClient } from '@/lib/api';
 import { ClientDeleteButton } from '../ClientDeleteButton';
+import { ClientResendInvitationButton } from '../ClientResendInvitationButton';
 
 const statusLabel: Record<StaffClient['paymentStatus'], string> = {
   not_configured: 'Sin configurar',
@@ -102,7 +103,10 @@ export function ClientDetailPage({ client }: ClientDetailPageProps) {
             </div>
           </div>
         </div>
-        <ClientDeleteButton client={client} />
+        <div className="flex items-center gap-2">
+          <ClientResendInvitationButton client={client} />
+          <ClientDeleteButton client={client} />
+        </div>
       </header>
 
       {/* Content Grid */}

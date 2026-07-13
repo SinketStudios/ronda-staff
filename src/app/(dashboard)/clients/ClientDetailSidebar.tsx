@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import type { RestaurantBillingSubscription, StaffClient } from '@/lib/api';
 import { ClientDeleteButton } from './ClientDeleteButton';
+import { ClientResendInvitationButton } from './ClientResendInvitationButton';
 
 const statusLabel: Record<StaffClient['paymentStatus'], string> = {
   not_configured: 'Sin configurar',
@@ -116,6 +117,7 @@ export function ClientDetailSidebar({ client, onClose }: ClientDetailSidebarProp
             </svg>
           </button>
           <ClientDeleteButton client={client} onDeleted={onClose} variant="icon" />
+          <ClientResendInvitationButton client={client} variant="icon" />
           <button
             onClick={onClose}
             className="rounded-lg p-2 text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-text"
