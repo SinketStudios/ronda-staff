@@ -434,8 +434,8 @@ export async function createStaffContactPerson(input: CreateStaffContactPersonIn
 }
 
 export async function deleteStaffContacts(ids: string[]): Promise<{ deleted: number }> {
-  const res = await fetch(`${API_URL}/staff/contacts`, {
-    method: 'DELETE',
+  const res = await fetch(`${API_URL}/staff/contacts/delete`, {
+    method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids }),
@@ -450,8 +450,8 @@ export async function deleteStaffContacts(ids: string[]): Promise<{ deleted: num
 }
 
 export async function deleteStaffContactPeople(ids: string[]): Promise<{ deleted: number }> {
-  const res = await fetch(`${API_URL}/staff/contacts/people`, {
-    method: 'DELETE',
+  const res = await fetch(`${API_URL}/staff/contacts/people/delete`, {
+    method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids }),
