@@ -418,6 +418,38 @@ export async function createStaffContactPerson(input: CreateStaffContactPersonIn
   return res.json();
 }
 
+export async function deleteStaffContacts(ids: string[]): Promise<{ deleted: number }> {
+  const res = await fetch(`${API_URL}/staff/contacts`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudieron eliminar los locales (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function deleteStaffContactPeople(ids: string[]): Promise<{ deleted: number }> {
+  const res = await fetch(`${API_URL}/staff/contacts/people`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudieron eliminar las personas (${res.status})`);
+  }
+
+  return res.json();
+}
+
 export async function deleteStaffClient(clientId: string): Promise<void> {
   const res = await fetch(`${API_URL}/staff/clients/${clientId}`, {
     method: 'DELETE',

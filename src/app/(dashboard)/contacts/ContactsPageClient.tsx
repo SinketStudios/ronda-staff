@@ -4,6 +4,8 @@ import { Logo } from '@/components/Logo';
 import {
   createStaffContact,
   createStaffContactPerson,
+  deleteStaffContactPeople,
+  deleteStaffContacts,
   getStaffContactPeople,
   getStaffContacts,
   type CreateStaffContactPersonInput,
@@ -17,6 +19,10 @@ type ContactStage = 'lead' | 'visited' | 'conversation' | 'meeting' | 'proposal'
 type ContactTab = 'entities' | 'people';
 
 type ContactItem = StaffCommercialContact;
+type DetailSelection =
+  | { type: 'contact'; item: ContactItem }
+  | { type: 'person'; item: PersonItem }
+  | null;
 
 type PersonItem = {
   id: string;
@@ -234,6 +240,11 @@ export function ContactsPageClient() {
   const [createPersonOpen, setCreatePersonOpen] = useState(false);
   const [contacts, setContacts] = useState<ContactItem[]>([]);
   const [standalonePeople, setStandalonePeople] = useState<StaffStandaloneContactPerson[]>([]);
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
+  const [detailSelection, setDetailSelection] = useState<DetailSelection>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
   const [contactsError, setContactsError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -346,6 +357,10 @@ export function ContactsPageClient() {
   const peopleTotalPages = Math.max(1, Math.ceil(filteredPeople.length / peoplePageSize));
   const peopleCurrentPage = Math.min(peoplePage, peopleTotalPages);
   const peoplePageItems = filteredPeople.slice((peopleCurrentPage - 1) * peoplePageSize, peopleCurrentPage * peoplePageSize);
+  const pageContactIds = pageItems.map((contact) => contact.id);
+  const pagePersonIds = peoplePageItems.map((person) => person.id);
+  const allPageContactsSelected = pageContactIds.length > 0 && pageContactIds.every((id) => selectedContactIds.includes(id));
+  const allPagePeopleSelected = pagePersonIds.length > 0 && pagePersonIds.every((id) => selectedPersonIds.includes(id));
 
   function updateFilter(action: () => void) {
     action();
@@ -355,6 +370,76 @@ export function ContactsPageClient() {
   function updatePeopleFilter(action: () => void) {
     action();
     setPeoplePage(1);
+  }
+
+  function toggleContactSelection(id: string) {
+    setSelectedContactIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  function togglePersonSelection(id: string) {
+    setSelectedPersonIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  function togglePageContacts() {
+    setSelectedContactIds((current) => {
+      if (allPageContactsSelected) return current.filter((id) => !pageContactIds.includes(id));
+      return [...new Set([...current, ...pageContactIds])];
+    });
+  }
+
+  function togglePagePeople() {
+    setSelectedPersonIds((current) => {
+      if (allPagePeopleSelected) return current.filter((id) => !pagePersonIds.includes(id));
+      return [...new Set([...current, ...pagePersonIds])];
+    });
+  }
+
+  function removePeopleFromState(ids: string[]) {
+    setStandalonePeople((current) => current.filter((person) => !ids.includes(person.id)));
+    setContacts((current) =>
+      current.map((contact) => ({
+        ...contact,
+        people: contact.people.filter((person) => !ids.includes(person.id)),
+      })),
+    );
+    setSelectedPersonIds((current) => current.filter((id) => !ids.includes(id)));
+    setDetailSelection((current) => (current?.type === 'person' && ids.includes(current.item.id) ? null : current));
+  }
+
+  async function deleteContactsByIds(ids: string[]) {
+    if (ids.length === 0 || isDeleting) return;
+    const message = ids.length === 1 ? '¿Eliminar este local de contactos?' : `¿Eliminar ${ids.length} locales de contactos?`;
+    if (!window.confirm(message)) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteStaffContacts(ids);
+      setContacts((current) => current.filter((contact) => !ids.includes(contact.id)));
+      setSelectedContactIds((current) => current.filter((id) => !ids.includes(id)));
+      setDetailSelection((current) => (current?.type === 'contact' && ids.includes(current.item.id) ? null : current));
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'No se pudieron eliminar los locales');
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  async function deletePeopleByIds(ids: string[]) {
+    if (ids.length === 0 || isDeleting) return;
+    const message = ids.length === 1 ? '¿Eliminar esta persona de contactos?' : `¿Eliminar ${ids.length} personas de contactos?`;
+    if (!window.confirm(message)) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteStaffContactPeople(ids);
+      removePeopleFromState(ids);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'No se pudieron eliminar las personas');
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   return (
@@ -411,6 +496,12 @@ export function ContactsPageClient() {
         </div>
       ) : null}
 
+      {deleteError ? (
+        <div className="shrink-0 rounded-lg border border-ronda-error/30 bg-red-50 px-4 py-3 text-sm font-medium text-ronda-error">
+          {deleteError}
+        </div>
+      ) : null}
+
       <div className="flex min-h-0 flex-1 flex-col gap-4 lg:overflow-hidden">
         {activeTab === 'entities' ? (
           <>
@@ -457,14 +548,38 @@ export function ContactsPageClient() {
           </label>
         </div>
 
+        {!isLoadingContacts && pageItems.length > 0 ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-ronda-border bg-ronda-surface px-4 py-3 text-sm">
+            <label className="flex items-center gap-2 font-semibold text-ronda-text">
+              <input
+                type="checkbox"
+                checked={allPageContactsSelected}
+                onChange={togglePageContacts}
+                className="h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
+              />
+              {selectedContactIds.length > 0 ? `${selectedContactIds.length} seleccionados` : 'Seleccionar visibles'}
+            </label>
+            <button
+              type="button"
+              disabled={selectedContactIds.length === 0 || isDeleting}
+              onClick={() => void deleteContactsByIds(selectedContactIds)}
+              className="min-h-9 rounded-lg border border-ronda-error/30 bg-red-50 px-3 font-semibold text-ronda-error transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isDeleting ? 'Eliminando...' : 'Eliminar seleccionados'}
+            </button>
+          </div>
+        ) : null}
+
         <section className="hidden min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface lg:flex">
-          <div className="grid shrink-0 grid-cols-[1.1fr_1fr_1.1fr_0.8fr_0.8fr_0.8fr] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
+          <div className="grid shrink-0 grid-cols-[44px_1.1fr_1fr_1.1fr_0.8fr_0.8fr_0.8fr_86px] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
+            <span className="sr-only">Seleccionar</span>
             <span>Local</span>
             <span>Contacto</span>
             <span>Ubicación</span>
             <span>Estado</span>
             <span>Potencial</span>
             <span>Actividad</span>
+            <span>Acciones</span>
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto">
@@ -486,8 +601,22 @@ export function ContactsPageClient() {
                 {pageItems.map((contact) => (
                   <div
                     key={contact.id}
-                    className="grid grid-cols-[1.1fr_1fr_1.1fr_0.8fr_0.8fr_0.8fr] items-center gap-4 px-4 py-4 text-sm"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailSelection({ type: 'contact', item: contact })}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') setDetailSelection({ type: 'contact', item: contact });
+                    }}
+                    className="grid cursor-pointer grid-cols-[44px_1.1fr_1fr_1.1fr_0.8fr_0.8fr_0.8fr_86px] items-center gap-4 px-4 py-4 text-sm transition hover:bg-ronda-bg"
                   >
+                    <label className="flex cursor-pointer items-center" onClick={(event) => event.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedContactIds.includes(contact.id)}
+                        onChange={() => toggleContactSelection(contact.id)}
+                        className="h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
+                      />
+                    </label>
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-ronda-text">{contact.restaurantName}</p>
                       <p className="truncate text-xs text-ronda-muted">Responsable: {contact.owner}</p>
@@ -507,6 +636,16 @@ export function ContactsPageClient() {
                       {contact.evaluation ? `${contact.evaluation.score}/${contact.evaluation.maxScore ?? 34}` : 'Sin evaluar'}
                     </p>
                     <p className="truncate text-xs font-medium text-ronda-muted">{formatDate(contact.lastActivity)}</p>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void deleteContactsByIds([contact.id]);
+                      }}
+                      className="min-h-8 rounded-md px-2 text-xs font-semibold text-ronda-error transition hover:bg-red-50"
+                    >
+                      Eliminar
+                    </button>
                   </div>
                 ))}
               </div>
@@ -527,8 +666,16 @@ export function ContactsPageClient() {
             pageItems.map((contact) => (
               <div key={contact.id} className="rounded-lg border border-ronda-border bg-ronda-surface p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedContactIds.includes(contact.id)}
+                    onChange={() => toggleContactSelection(contact.id)}
+                    className="mt-1 h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
+                  />
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-ronda-text">{contact.restaurantName}</p>
+                    <button type="button" onClick={() => setDetailSelection({ type: 'contact', item: contact })} className="block max-w-full truncate text-left font-semibold text-ronda-text">
+                      {contact.restaurantName}
+                    </button>
                     <p className="mt-1 truncate text-xs text-ronda-muted">{contact.address || contact.city || 'Sin ubicación'}</p>
                   </div>
                   <span className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${stageData[contact.stage].className}`}>
@@ -539,6 +686,13 @@ export function ContactsPageClient() {
                 <p className="mt-1 truncate text-xs text-ronda-muted">
                   {contact.phone || contact.email || 'Sin datos'} - Potencial {contact.evaluation ? `${contact.evaluation.score}/${contact.evaluation.maxScore ?? 34}` : 'sin evaluar'}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => void deleteContactsByIds([contact.id])}
+                  className="mt-3 min-h-9 rounded-lg border border-ronda-error/30 bg-red-50 px-3 text-sm font-semibold text-ronda-error"
+                >
+                  Eliminar
+                </button>
               </div>
             ))
           )}
@@ -614,14 +768,38 @@ export function ContactsPageClient() {
               </label>
             </div>
 
+            {peoplePageItems.length > 0 ? (
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-ronda-border bg-ronda-surface px-4 py-3 text-sm">
+                <label className="flex items-center gap-2 font-semibold text-ronda-text">
+                  <input
+                    type="checkbox"
+                    checked={allPagePeopleSelected}
+                    onChange={togglePagePeople}
+                    className="h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
+                  />
+                  {selectedPersonIds.length > 0 ? `${selectedPersonIds.length} seleccionadas` : 'Seleccionar visibles'}
+                </label>
+                <button
+                  type="button"
+                  disabled={selectedPersonIds.length === 0 || isDeleting}
+                  onClick={() => void deletePeopleByIds(selectedPersonIds)}
+                  className="min-h-9 rounded-lg border border-ronda-error/30 bg-red-50 px-3 font-semibold text-ronda-error transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {isDeleting ? 'Eliminando...' : 'Eliminar seleccionadas'}
+                </button>
+              </div>
+            ) : null}
+
             <section className="hidden min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface lg:flex">
-              <div className="grid shrink-0 grid-cols-[1.1fr_0.9fr_1fr_1fr_0.8fr_0.8fr] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
+              <div className="grid shrink-0 grid-cols-[44px_1.1fr_0.9fr_1fr_1fr_0.8fr_0.8fr_86px] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
+                <span className="sr-only">Seleccionar</span>
                 <span>Persona</span>
                 <span>Cargo</span>
                 <span>Datos</span>
                 <span>Local asociado</span>
                 <span>Estado</span>
                 <span>Potencial</span>
+                <span>Acciones</span>
               </div>
 
               <div className="min-h-0 flex-1 overflow-auto">
@@ -639,8 +817,22 @@ export function ContactsPageClient() {
                     {peoplePageItems.map((person) => (
                       <div
                         key={person.id}
-                        className="grid grid-cols-[1.1fr_0.9fr_1fr_1fr_0.8fr_0.8fr] items-center gap-4 px-4 py-4 text-sm"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setDetailSelection({ type: 'person', item: person })}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') setDetailSelection({ type: 'person', item: person });
+                        }}
+                        className="grid cursor-pointer grid-cols-[44px_1.1fr_0.9fr_1fr_1fr_0.8fr_0.8fr_86px] items-center gap-4 px-4 py-4 text-sm transition hover:bg-ronda-bg"
                       >
+                        <label className="flex cursor-pointer items-center" onClick={(event) => event.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedPersonIds.includes(person.id)}
+                            onChange={() => togglePersonSelection(person.id)}
+                            className="h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
+                          />
+                        </label>
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-ronda-text">{person.name}</p>
                           <p className="truncate text-xs text-ronda-muted">Responsable: {person.owner}</p>
@@ -655,6 +847,16 @@ export function ContactsPageClient() {
                           {stageData[person.stage].label}
                         </span>
                         <p className="font-semibold text-ronda-coffee">{person.potential ? `${person.potential}/34` : 'Sin evaluar'}</p>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void deletePeopleByIds([person.id]);
+                          }}
+                          className="min-h-8 rounded-md px-2 text-xs font-semibold text-ronda-error transition hover:bg-red-50"
+                        >
+                          Eliminar
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -671,8 +873,16 @@ export function ContactsPageClient() {
                 peoplePageItems.map((person) => (
                   <div key={person.id} className="rounded-lg border border-ronda-border bg-ronda-surface p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedPersonIds.includes(person.id)}
+                        onChange={() => togglePersonSelection(person.id)}
+                        className="mt-1 h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
+                      />
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-ronda-text">{person.name}</p>
+                        <button type="button" onClick={() => setDetailSelection({ type: 'person', item: person })} className="block max-w-full truncate text-left font-semibold text-ronda-text">
+                          {person.name}
+                        </button>
                         <p className="mt-1 truncate text-xs text-ronda-muted">{person.role || person.linkedEntity || 'Sin cargo'}</p>
                       </div>
                       <span className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${stageData[person.stage].className}`}>
@@ -683,6 +893,13 @@ export function ContactsPageClient() {
                     <p className="mt-1 truncate text-xs text-ronda-muted">
                       {person.linkedEntity || 'Sin local'} - Potencial {person.potential ? `${person.potential}/34` : 'sin evaluar'}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => void deletePeopleByIds([person.id])}
+                      className="mt-3 min-h-9 rounded-lg border border-ronda-error/30 bg-red-50 px-3 text-sm font-semibold text-ronda-error"
+                    >
+                      Eliminar
+                    </button>
                   </div>
                 ))
               )}
@@ -735,6 +952,15 @@ export function ContactsPageClient() {
           onClose={() => setCreatePersonOpen(false)}
         />
       ) : null}
+
+      {detailSelection ? (
+        <ContactDetailSidebar
+          selection={detailSelection}
+          onClose={() => setDetailSelection(null)}
+          onDeleteContact={(id) => void deleteContactsByIds([id])}
+          onDeletePerson={(id) => void deletePeopleByIds([id])}
+        />
+      ) : null}
     </div>
   );
 }
@@ -770,6 +996,172 @@ const emptyLocalForm: LocalFormDraft = {
   tiktok: '',
   googleMapsUrl: '',
 };
+
+function ContactDetailSidebar({
+  selection,
+  onClose,
+  onDeleteContact,
+  onDeletePerson,
+}: {
+  selection: Exclude<DetailSelection, null>;
+  onClose: () => void;
+  onDeleteContact: (id: string) => void;
+  onDeletePerson: (id: string) => void;
+}) {
+  const isContact = selection.type === 'contact';
+  const title = isContact ? selection.item.restaurantName : selection.item.name;
+  const subtitle = isContact ? selection.item.venueType || 'Local comercial' : selection.item.role || 'Persona de contacto';
+
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end bg-ronda-coffee/30 backdrop-blur-sm" onClick={onClose}>
+      <aside
+        className="flex h-full w-full max-w-xl flex-col overflow-hidden border-l border-ronda-border bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="shrink-0 border-b border-ronda-border px-5 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ronda-gold-dark">
+                {isContact ? 'Local' : 'Persona'}
+              </p>
+              <h2 className="mt-2 truncate text-2xl font-semibold text-ronda-text">{title}</h2>
+              <p className="mt-1 text-sm text-ronda-muted">{subtitle}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-ronda-border text-xl leading-none text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-coffee"
+              aria-label="Cerrar"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          {isContact ? (
+            <ContactDetailContent contact={selection.item} />
+          ) : (
+            <PersonDetailContent person={selection.item} />
+          )}
+        </div>
+
+        <div className="shrink-0 border-t border-ronda-border px-5 py-4">
+          <button
+            type="button"
+            onClick={() => (isContact ? onDeleteContact(selection.item.id) : onDeletePerson(selection.item.id))}
+            className="min-h-11 w-full rounded-lg border border-ronda-error/30 bg-red-50 px-4 text-sm font-semibold text-ronda-error transition hover:bg-red-100"
+          >
+            {isContact ? 'Eliminar local' : 'Eliminar persona'}
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function ContactDetailContent({ contact }: { contact: ContactItem }) {
+  return (
+    <div className="space-y-6">
+      <DetailBlock title="Información básica">
+        <DetailRow label="Nombre" value={contact.restaurantName} />
+        <DetailRow label="Tipo" value={contact.venueType} />
+        <DetailRow label="Estado" value={stageData[contact.stage].label} />
+        <DetailRow label="Responsable" value={contact.owner} />
+      </DetailBlock>
+
+      <DetailBlock title="Contacto">
+        <DetailRow label="Teléfono" value={contact.phone} />
+        <DetailRow label="Email" value={contact.email} />
+        <DetailRow label="Persona principal" value={contact.contactName} />
+      </DetailBlock>
+
+      <DetailBlock title="Localización">
+        <DetailRow label="Dirección" value={contact.address} />
+        <DetailRow label="Ciudad" value={contact.city} />
+        <DetailRow label="Provincia" value={contact.province} />
+        <DetailRow label="Código postal" value={contact.postalCode} />
+      </DetailBlock>
+
+      <DetailBlock title="Personas asociadas">
+        {contact.people.length === 0 ? (
+          <p className="text-sm text-ronda-muted">Sin personas asociadas.</p>
+        ) : (
+          <div className="space-y-3">
+            {contact.people.map((person) => (
+              <div key={person.id} className="rounded-lg border border-ronda-border bg-ronda-bg px-3 py-3">
+                <p className="font-semibold text-ronda-text">{person.name}</p>
+                <p className="mt-1 text-sm text-ronda-muted">{person.role || 'Sin cargo'}</p>
+                <p className="mt-1 text-xs text-ronda-muted">{person.phone || person.email || 'Sin datos'}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </DetailBlock>
+
+      <DetailBlock title="Evaluación">
+        <DetailRow label="Potencial" value={contact.evaluation ? `${contact.evaluation.score}/${contact.evaluation.maxScore ?? 34}` : 'Sin evaluar'} />
+        <DetailRow label="Etiqueta" value={contact.evaluation?.label} />
+        <DetailRow label="Última actividad" value={formatDate(contact.lastActivity)} />
+      </DetailBlock>
+
+      <DetailBlock title="Notas y redes">
+        <DetailRow label="Notas" value={contact.notes} />
+        <DetailRow label="Web" value={contact.web} />
+        <DetailRow label="Instagram" value={contact.instagram} />
+        <DetailRow label="TikTok" value={contact.tiktok} />
+        <DetailRow label="Google Maps" value={contact.googleMapsUrl} />
+      </DetailBlock>
+    </div>
+  );
+}
+
+function PersonDetailContent({ person }: { person: PersonItem }) {
+  return (
+    <div className="space-y-6">
+      <DetailBlock title="Información básica">
+        <DetailRow label="Nombre" value={person.name} />
+        <DetailRow label="Cargo" value={person.role} />
+        <DetailRow label="Local asociado" value={person.linkedEntity} />
+        <DetailRow label="Estado" value={stageData[person.stage].label} />
+      </DetailBlock>
+
+      <DetailBlock title="Datos de contacto">
+        <DetailRow label="Teléfono" value={person.phone} />
+        <DetailRow label="Email" value={person.email} />
+        <DetailRow label="Ciudad" value={person.city} />
+      </DetailBlock>
+
+      <DetailBlock title="Seguimiento">
+        <DetailRow label="Responsable" value={person.owner} />
+        <DetailRow label="Potencial" value={person.potential ? `${person.potential}/34` : 'Sin evaluar'} />
+        <DetailRow label="Última actividad" value={formatDate(person.lastActivity)} />
+        <DetailRow label="Creado" value={formatDate(person.createdAt)} />
+      </DetailBlock>
+    </div>
+  );
+}
+
+function DetailBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="mb-3 flex items-center gap-3">
+        <span className="shrink-0 text-sm font-semibold text-ronda-muted">{title}</span>
+        <div className="h-px flex-1 bg-ronda-border" />
+      </div>
+      <div className="space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="grid gap-1 rounded-lg bg-ronda-bg px-3 py-2">
+      <span className="text-[11px] font-semibold uppercase text-ronda-muted">{label}</span>
+      <span className="break-words text-sm font-medium text-ronda-text">{value || 'Sin datos'}</span>
+    </div>
+  );
+}
 
 function CreatePersonModal({
   onClose,
