@@ -405,6 +405,40 @@ export async function getStaffContactPeople(): Promise<StaffStandaloneContactPer
   return res.json();
 }
 
+export async function getStaffContact(contactId: string): Promise<StaffCommercialContact> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/contacts/${contactId}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudo cargar el contacto${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
+export async function getStaffContactPerson(personId: string): Promise<StaffContactPersonListItem> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/contacts/people/${personId}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudo cargar la persona${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
 export async function createStaffContact(input: CreateStaffCommercialContactInput): Promise<StaffCommercialContact> {
   const res = await fetch(`${API_URL}/staff/contacts`, {
     method: 'POST',
