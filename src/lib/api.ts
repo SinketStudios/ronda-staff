@@ -205,6 +205,10 @@ export type CreateStaffContactPersonInput = {
   email?: string;
 };
 
+export type UpdateStaffCommercialContactInput = Partial<Omit<CreateStaffCommercialContactInput, 'evaluation'>>;
+
+export type UpdateStaffContactPersonInput = Partial<CreateStaffContactPersonInput>;
+
 export type AutomationStatus = 'draft' | 'active' | 'paused';
 
 export type StaffAutomationWorkflow = {
@@ -428,6 +432,44 @@ export async function createStaffContactPerson(input: CreateStaffContactPersonIn
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.message || `No se pudo crear la persona (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function updateStaffContact(
+  contactId: string,
+  input: UpdateStaffCommercialContactInput,
+): Promise<StaffCommercialContact> {
+  const res = await fetch(`${API_URL}/staff/contacts/${contactId}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo actualizar el local (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function updateStaffContactPerson(
+  personId: string,
+  input: UpdateStaffContactPersonInput,
+): Promise<StaffStandaloneContactPerson> {
+  const res = await fetch(`${API_URL}/staff/contacts/people/${personId}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo actualizar la persona (${res.status})`);
   }
 
   return res.json();

@@ -258,6 +258,15 @@ export function ContactsPageClient() {
     void loadContacts();
   }, [loadContacts]);
 
+  useEffect(() => {
+    function reloadContacts() {
+      void loadContacts();
+    }
+
+    window.addEventListener('ronda:contacts-updated', reloadContacts);
+    return () => window.removeEventListener('ronda:contacts-updated', reloadContacts);
+  }, [loadContacts]);
+
   const people = useMemo<PersonItem[]>(() => {
     const linkedPeople = contacts.flatMap((contact) =>
       contact.people.map((person) => ({
