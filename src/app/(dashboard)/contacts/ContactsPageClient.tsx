@@ -318,7 +318,7 @@ export function ContactsPageClient() {
 
       return matchesQuery && (stage === 'all' || contact.stage === stage);
     });
-  }, [query, stage]);
+  }, [contacts, query, stage]);
 
   const filteredPeople = useMemo(() => {
     const normalizedQuery = peopleQuery.trim().toLowerCase();
@@ -338,7 +338,7 @@ export function ContactsPageClient() {
 
       return matchesQuery && (peopleStage === 'all' || person.stage === peopleStage);
     });
-  }, [peopleQuery, peopleStage]);
+  }, [people, peopleQuery, peopleStage]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
