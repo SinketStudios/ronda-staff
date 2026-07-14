@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getStaffMe, type StaffClient, type StaffEmployee, type StaffMember } from '@/lib/api';
 import { ClientDetailSidebar } from './clients/ClientDetailSidebar';
+import { ContactDetailSidebar } from './contacts/ContactDetailSidebar';
 import { DashboardContext } from './DashboardContext';
 import { EmployeeDetailSidebar } from './employees/EmployeeDetailSidebar';
 
@@ -14,9 +15,11 @@ interface DashboardLayoutClientProps {
 export function DashboardLayoutClient({ staff, children }: DashboardLayoutClientProps) {
   const [selectedClient, setSelectedClient] = useState<StaffClient | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<StaffEmployee | null>(null);
+  const [selectedContact, setSelectedContact] = useState<import('@/lib/api').StaffCommercialContact | null>(null);
+  const [selectedContactPerson, setSelectedContactPerson] = useState<import('@/lib/api').StaffContactPersonListItem | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(false);
 
-  const detailOpen = selectedClient || selectedEmployee;
+  const detailOpen = selectedClient || selectedEmployee || selectedContact || selectedContactPerson;
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +63,7 @@ export function DashboardLayoutClient({ staff, children }: DashboardLayoutClient
   }
 
   return (
-    <DashboardContext.Provider value={{ staff, selectedClient, setSelectedClient, selectedEmployee, setSelectedEmployee }}>
+    <DashboardContext.Provider value={{ staff, selectedClient, setSelectedClient, selectedEmployee, setSelectedEmployee, selectedContact, setSelectedContact, selectedContactPerson, setSelectedContactPerson }}>
       <div className="flex h-screen min-h-dvh overflow-hidden bg-ronda-bg text-ronda-text">
         {children}
 
@@ -75,6 +78,18 @@ export function DashboardLayoutClient({ staff, children }: DashboardLayoutClient
           {selectedClient && <ClientDetailSidebar client={selectedClient} onClose={() => setSelectedClient(null)} />}
           {selectedEmployee && !selectedClient && (
             <EmployeeDetailSidebar employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />
+          )}
+          {selectedContact && !selectedClient && !selectedEmployee && (
+            <ContactDetailSidebar
+              selection={{ type: 'contact', item: selectedContact }}
+              onClose={() => setSelectedContact(null)}
+            />
+          )}
+          {selectedContactPerson && !selectedClient && !selectedEmployee && !selectedContact && (
+            <ContactDetailSidebar
+              selection={{ type: 'person', item: selectedContactPerson }}
+              onClose={() => setSelectedContactPerson(null)}
+            />
           )}
         </div>
       </div>

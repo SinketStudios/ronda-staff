@@ -115,6 +115,21 @@ export type StaffStandaloneContactPerson = StaffCommercialContactPerson & {
   lastActivity: string | null;
 };
 
+export type StaffContactPersonListItem = {
+  id: string;
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+  city: string;
+  linkedEntity: string | null;
+  stage: StaffContactStage;
+  potential: number;
+  owner: string;
+  lastActivity: string | null;
+  createdAt: string;
+};
+
 export type StaffCommercialContact = {
   id: string;
   restaurantName: string;

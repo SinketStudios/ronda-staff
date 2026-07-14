@@ -11,33 +11,17 @@ import {
   type CreateStaffContactPersonInput,
   type CreateStaffCommercialContactInput,
   type StaffCommercialContact,
+  type StaffContactPersonListItem,
   type StaffStandaloneContactPerson,
 } from '@/lib/api';
+import { useDashboard } from '../DashboardContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type ContactStage = 'lead' | 'visited' | 'conversation' | 'meeting' | 'proposal' | 'closed';
 type ContactTab = 'entities' | 'people';
 
 type ContactItem = StaffCommercialContact;
-type DetailSelection =
-  | { type: 'contact'; item: ContactItem }
-  | { type: 'person'; item: PersonItem }
-  | null;
-
-type PersonItem = {
-  id: string;
-  name: string;
-  role: string;
-  phone: string;
-  email: string;
-  city: string;
-  linkedEntity: string | null;
-  stage: ContactStage;
-  potential: number;
-  owner: string;
-  lastActivity: string | null;
-  createdAt: string;
-};
+type PersonItem = StaffContactPersonListItem;
 
 const hospitalityRoles = [
   'Propietario',
@@ -235,6 +219,7 @@ function formatDate(value: string | null) {
 }
 
 export function ContactsPageClient() {
+  const { setSelectedClient, setSelectedEmployee, setSelectedContact, setSelectedContactPerson } = useDashboard();
   const [activeTab, setActiveTab] = useState<ContactTab>('entities');
   const [createLocalOpen, setCreateLocalOpen] = useState(false);
   const [createPersonOpen, setCreatePersonOpen] = useState(false);
@@ -242,7 +227,6 @@ export function ContactsPageClient() {
   const [standalonePeople, setStandalonePeople] = useState<StaffStandaloneContactPerson[]>([]);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
-  const [detailSelection, setDetailSelection] = useState<DetailSelection>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
@@ -403,7 +387,7 @@ export function ContactsPageClient() {
       })),
     );
     setSelectedPersonIds((current) => current.filter((id) => !ids.includes(id)));
-    setDetailSelection((current) => (current?.type === 'person' && ids.includes(current.item.id) ? null : current));
+    setSelectedContactPerson(null);
   }
 
   async function deleteContactsByIds(ids: string[]) {
@@ -417,7 +401,7 @@ export function ContactsPageClient() {
       await deleteStaffContacts(ids);
       setContacts((current) => current.filter((contact) => !ids.includes(contact.id)));
       setSelectedContactIds((current) => current.filter((id) => !ids.includes(id)));
-      setDetailSelection((current) => (current?.type === 'contact' && ids.includes(current.item.id) ? null : current));
+      setSelectedContact(null);
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : 'No se pudieron eliminar los locales');
     } finally {
@@ -603,9 +587,19 @@ export function ContactsPageClient() {
                     key={contact.id}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setDetailSelection({ type: 'contact', item: contact })}
+                    onClick={() => {
+                      setSelectedClient(null);
+                      setSelectedEmployee(null);
+                      setSelectedContactPerson(null);
+                      setSelectedContact(contact);
+                    }}
                     onKeyDown={(event) => {
-                      if (event.key === 'Enter') setDetailSelection({ type: 'contact', item: contact });
+                      if (event.key === 'Enter') {
+                        setSelectedClient(null);
+                        setSelectedEmployee(null);
+                        setSelectedContactPerson(null);
+                        setSelectedContact(contact);
+                      }
                     }}
                     className="grid cursor-pointer grid-cols-[44px_1.1fr_1fr_1.1fr_0.8fr_0.8fr_0.8fr_86px] items-center gap-4 px-4 py-4 text-sm transition hover:bg-ronda-bg"
                   >
@@ -673,7 +667,16 @@ export function ContactsPageClient() {
                     className="mt-1 h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
                   />
                   <div className="min-w-0">
-                    <button type="button" onClick={() => setDetailSelection({ type: 'contact', item: contact })} className="block max-w-full truncate text-left font-semibold text-ronda-text">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedClient(null);
+                        setSelectedEmployee(null);
+                        setSelectedContactPerson(null);
+                        setSelectedContact(contact);
+                      }}
+                      className="block max-w-full truncate text-left font-semibold text-ronda-text"
+                    >
                       {contact.restaurantName}
                     </button>
                     <p className="mt-1 truncate text-xs text-ronda-muted">{contact.address || contact.city || 'Sin ubicación'}</p>
@@ -819,9 +822,19 @@ export function ContactsPageClient() {
                         key={person.id}
                         role="button"
                         tabIndex={0}
-                        onClick={() => setDetailSelection({ type: 'person', item: person })}
+                        onClick={() => {
+                          setSelectedClient(null);
+                          setSelectedEmployee(null);
+                          setSelectedContact(null);
+                          setSelectedContactPerson(person);
+                        }}
                         onKeyDown={(event) => {
-                          if (event.key === 'Enter') setDetailSelection({ type: 'person', item: person });
+                          if (event.key === 'Enter') {
+                            setSelectedClient(null);
+                            setSelectedEmployee(null);
+                            setSelectedContact(null);
+                            setSelectedContactPerson(person);
+                          }
                         }}
                         className="grid cursor-pointer grid-cols-[44px_1.1fr_0.9fr_1fr_1fr_0.8fr_0.8fr_86px] items-center gap-4 px-4 py-4 text-sm transition hover:bg-ronda-bg"
                       >
@@ -880,7 +893,16 @@ export function ContactsPageClient() {
                         className="mt-1 h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
                       />
                       <div className="min-w-0">
-                        <button type="button" onClick={() => setDetailSelection({ type: 'person', item: person })} className="block max-w-full truncate text-left font-semibold text-ronda-text">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedClient(null);
+                            setSelectedEmployee(null);
+                            setSelectedContact(null);
+                            setSelectedContactPerson(person);
+                          }}
+                          className="block max-w-full truncate text-left font-semibold text-ronda-text"
+                        >
                           {person.name}
                         </button>
                         <p className="mt-1 truncate text-xs text-ronda-muted">{person.role || person.linkedEntity || 'Sin cargo'}</p>
@@ -953,14 +975,6 @@ export function ContactsPageClient() {
         />
       ) : null}
 
-      {detailSelection ? (
-        <ContactDetailSidebar
-          selection={detailSelection}
-          onClose={() => setDetailSelection(null)}
-          onDeleteContact={(id) => void deleteContactsByIds([id])}
-          onDeletePerson={(id) => void deletePeopleByIds([id])}
-        />
-      ) : null}
     </div>
   );
 }
@@ -996,172 +1010,6 @@ const emptyLocalForm: LocalFormDraft = {
   tiktok: '',
   googleMapsUrl: '',
 };
-
-function ContactDetailSidebar({
-  selection,
-  onClose,
-  onDeleteContact,
-  onDeletePerson,
-}: {
-  selection: Exclude<DetailSelection, null>;
-  onClose: () => void;
-  onDeleteContact: (id: string) => void;
-  onDeletePerson: (id: string) => void;
-}) {
-  const isContact = selection.type === 'contact';
-  const title = isContact ? selection.item.restaurantName : selection.item.name;
-  const subtitle = isContact ? selection.item.venueType || 'Local comercial' : selection.item.role || 'Persona de contacto';
-
-  return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-ronda-coffee/30 backdrop-blur-sm" onClick={onClose}>
-      <aside
-        className="flex h-full w-full max-w-xl flex-col overflow-hidden border-l border-ronda-border bg-white shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="shrink-0 border-b border-ronda-border px-5 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ronda-gold-dark">
-                {isContact ? 'Local' : 'Persona'}
-              </p>
-              <h2 className="mt-2 truncate text-2xl font-semibold text-ronda-text">{title}</h2>
-              <p className="mt-1 text-sm text-ronda-muted">{subtitle}</p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-ronda-border text-xl leading-none text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-coffee"
-              aria-label="Cerrar"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-          {isContact ? (
-            <ContactDetailContent contact={selection.item} />
-          ) : (
-            <PersonDetailContent person={selection.item} />
-          )}
-        </div>
-
-        <div className="shrink-0 border-t border-ronda-border px-5 py-4">
-          <button
-            type="button"
-            onClick={() => (isContact ? onDeleteContact(selection.item.id) : onDeletePerson(selection.item.id))}
-            className="min-h-11 w-full rounded-lg border border-ronda-error/30 bg-red-50 px-4 text-sm font-semibold text-ronda-error transition hover:bg-red-100"
-          >
-            {isContact ? 'Eliminar local' : 'Eliminar persona'}
-          </button>
-        </div>
-      </aside>
-    </div>
-  );
-}
-
-function ContactDetailContent({ contact }: { contact: ContactItem }) {
-  return (
-    <div className="space-y-6">
-      <DetailBlock title="Información básica">
-        <DetailRow label="Nombre" value={contact.restaurantName} />
-        <DetailRow label="Tipo" value={contact.venueType} />
-        <DetailRow label="Estado" value={stageData[contact.stage].label} />
-        <DetailRow label="Responsable" value={contact.owner} />
-      </DetailBlock>
-
-      <DetailBlock title="Contacto">
-        <DetailRow label="Teléfono" value={contact.phone} />
-        <DetailRow label="Email" value={contact.email} />
-        <DetailRow label="Persona principal" value={contact.contactName} />
-      </DetailBlock>
-
-      <DetailBlock title="Localización">
-        <DetailRow label="Dirección" value={contact.address} />
-        <DetailRow label="Ciudad" value={contact.city} />
-        <DetailRow label="Provincia" value={contact.province} />
-        <DetailRow label="Código postal" value={contact.postalCode} />
-      </DetailBlock>
-
-      <DetailBlock title="Personas asociadas">
-        {contact.people.length === 0 ? (
-          <p className="text-sm text-ronda-muted">Sin personas asociadas.</p>
-        ) : (
-          <div className="space-y-3">
-            {contact.people.map((person) => (
-              <div key={person.id} className="rounded-lg border border-ronda-border bg-ronda-bg px-3 py-3">
-                <p className="font-semibold text-ronda-text">{person.name}</p>
-                <p className="mt-1 text-sm text-ronda-muted">{person.role || 'Sin cargo'}</p>
-                <p className="mt-1 text-xs text-ronda-muted">{person.phone || person.email || 'Sin datos'}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </DetailBlock>
-
-      <DetailBlock title="Evaluación">
-        <DetailRow label="Potencial" value={contact.evaluation ? `${contact.evaluation.score}/${contact.evaluation.maxScore ?? 34}` : 'Sin evaluar'} />
-        <DetailRow label="Etiqueta" value={contact.evaluation?.label} />
-        <DetailRow label="Última actividad" value={formatDate(contact.lastActivity)} />
-      </DetailBlock>
-
-      <DetailBlock title="Notas y redes">
-        <DetailRow label="Notas" value={contact.notes} />
-        <DetailRow label="Web" value={contact.web} />
-        <DetailRow label="Instagram" value={contact.instagram} />
-        <DetailRow label="TikTok" value={contact.tiktok} />
-        <DetailRow label="Google Maps" value={contact.googleMapsUrl} />
-      </DetailBlock>
-    </div>
-  );
-}
-
-function PersonDetailContent({ person }: { person: PersonItem }) {
-  return (
-    <div className="space-y-6">
-      <DetailBlock title="Información básica">
-        <DetailRow label="Nombre" value={person.name} />
-        <DetailRow label="Cargo" value={person.role} />
-        <DetailRow label="Local asociado" value={person.linkedEntity} />
-        <DetailRow label="Estado" value={stageData[person.stage].label} />
-      </DetailBlock>
-
-      <DetailBlock title="Datos de contacto">
-        <DetailRow label="Teléfono" value={person.phone} />
-        <DetailRow label="Email" value={person.email} />
-        <DetailRow label="Ciudad" value={person.city} />
-      </DetailBlock>
-
-      <DetailBlock title="Seguimiento">
-        <DetailRow label="Responsable" value={person.owner} />
-        <DetailRow label="Potencial" value={person.potential ? `${person.potential}/34` : 'Sin evaluar'} />
-        <DetailRow label="Última actividad" value={formatDate(person.lastActivity)} />
-        <DetailRow label="Creado" value={formatDate(person.createdAt)} />
-      </DetailBlock>
-    </div>
-  );
-}
-
-function DetailBlock({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <div className="mb-3 flex items-center gap-3">
-        <span className="shrink-0 text-sm font-semibold text-ronda-muted">{title}</span>
-        <div className="h-px flex-1 bg-ronda-border" />
-      </div>
-      <div className="space-y-2">{children}</div>
-    </section>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value?: string | number | null }) {
-  return (
-    <div className="grid gap-1 rounded-lg bg-ronda-bg px-3 py-2">
-      <span className="text-[11px] font-semibold uppercase text-ronda-muted">{label}</span>
-      <span className="break-words text-sm font-medium text-ronda-text">{value || 'Sin datos'}</span>
-    </div>
-  );
-}
 
 function CreatePersonModal({
   onClose,
