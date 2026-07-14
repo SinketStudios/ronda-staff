@@ -3,9 +3,13 @@
 import { Logo } from '@/components/Logo';
 import {
   createStaffContact,
+  createStaffContactPerson,
+  getStaffContactPeople,
   getStaffContacts,
+  type CreateStaffContactPersonInput,
   type CreateStaffCommercialContactInput,
   type StaffCommercialContact,
+  type StaffStandaloneContactPerson,
 } from '@/lib/api';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -227,7 +231,9 @@ function formatDate(value: string | null) {
 export function ContactsPageClient() {
   const [activeTab, setActiveTab] = useState<ContactTab>('entities');
   const [createLocalOpen, setCreateLocalOpen] = useState(false);
+  const [createPersonOpen, setCreatePersonOpen] = useState(false);
   const [contacts, setContacts] = useState<ContactItem[]>([]);
+  const [standalonePeople, setStandalonePeople] = useState<StaffStandaloneContactPerson[]>([]);
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
   const [contactsError, setContactsError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -243,7 +249,9 @@ export function ContactsPageClient() {
     setIsLoadingContacts(true);
     setContactsError(null);
     try {
-      setContacts(await getStaffContacts());
+      const [nextContacts, nextPeople] = await Promise.all([getStaffContacts(), getStaffContactPeople()]);
+      setContacts(nextContacts);
+      setStandalonePeople(nextPeople);
     } catch (error) {
       setContactsError(error instanceof Error ? error.message : 'No se pudieron cargar los contactos');
     } finally {
@@ -256,7 +264,7 @@ export function ContactsPageClient() {
   }, [loadContacts]);
 
   const people = useMemo<PersonItem[]>(() => {
-    return contacts.flatMap((contact) =>
+    const linkedPeople = contacts.flatMap((contact) =>
       contact.people.map((person) => ({
         id: person.id,
         name: person.name,
@@ -272,7 +280,25 @@ export function ContactsPageClient() {
         createdAt: person.createdAt,
       })),
     );
-  }, [contacts]);
+
+    return [
+      ...standalonePeople.map((person) => ({
+        id: person.id,
+        name: person.name,
+        role: person.role ?? '',
+        phone: person.phone ?? '',
+        email: person.email ?? '',
+        city: person.city,
+        linkedEntity: person.linkedEntity,
+        stage: person.stage,
+        potential: person.potential,
+        owner: person.owner,
+        lastActivity: person.lastActivity,
+        createdAt: person.createdAt,
+      })),
+      ...linkedPeople,
+    ];
+  }, [contacts, standalonePeople]);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -371,6 +397,7 @@ export function ContactsPageClient() {
           type="button"
           onClick={() => {
             if (activeTab === 'entities') setCreateLocalOpen(true);
+            else setCreatePersonOpen(true);
           }}
           className="min-h-10 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark sm:shrink-0"
         >
@@ -698,6 +725,16 @@ export function ContactsPageClient() {
           onClose={() => setCreateLocalOpen(false)}
         />
       ) : null}
+
+      {createPersonOpen ? (
+        <CreatePersonModal
+          onCreated={(person) => {
+            setStandalonePeople((current) => [person, ...current]);
+            setCreatePersonOpen(false);
+          }}
+          onClose={() => setCreatePersonOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -733,6 +770,91 @@ const emptyLocalForm: LocalFormDraft = {
   tiktok: '',
   googleMapsUrl: '',
 };
+
+function CreatePersonModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (person: StaffStandaloneContactPerson) => void;
+}) {
+  const [draft, setDraft] = useState<CreateStaffContactPersonInput>({ name: '', role: '', phone: '', email: '' });
+  const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  function updateDraft<K extends keyof CreateStaffContactPersonInput>(key: K, value: CreateStaffContactPersonInput[K]) {
+    setHasChanges(true);
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  async function savePerson() {
+    setSaveError(null);
+    if (!draft.name.trim()) {
+      setSaveError('El nombre de la persona es obligatorio.');
+      return;
+    }
+
+    const clean = (value?: string) => value?.trim() || undefined;
+    setIsSaving(true);
+    try {
+      onCreated(await createStaffContactPerson({
+        name: draft.name.trim(),
+        role: clean(draft.role),
+        phone: clean(draft.phone),
+        email: clean(draft.email),
+      }));
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'No se pudo guardar la persona');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ronda-coffee/45 p-4 backdrop-blur-sm sm:p-6">
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-ronda-border bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 px-5 py-5 sm:px-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-ronda-text">Nueva persona</h2>
+            <p className="mt-1 text-sm text-ronda-muted">
+              Registra un contacto comercial aunque todavía no esté asociado a un local.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-10 rounded-lg border border-ronda-border bg-white px-4 text-sm font-semibold text-ronda-coffee transition hover:bg-ronda-bg"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={!hasChanges || isSaving}
+              onClick={savePerson}
+              className="min-h-10 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isSaving ? 'Guardando...' : 'Guardar persona'}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 px-5 pb-5 sm:grid-cols-2 sm:px-6 sm:pb-6">
+          <ControlledField label="Nombre" value={draft.name ?? ''} onChange={(value) => updateDraft('name', value)} required />
+          <ControlledSelect label="Cargo" value={draft.role ?? ''} onChange={(value) => updateDraft('role', value)} options={hospitalityRoles} />
+          <ControlledField label="Teléfono" value={draft.phone ?? ''} onChange={(value) => updateDraft('phone', value)} />
+          <ControlledField label="Email" value={draft.email ?? ''} onChange={(value) => updateDraft('email', value)} type="email" />
+          {saveError ? (
+            <div className="rounded-lg border border-ronda-error/30 bg-red-50 px-4 py-3 text-sm font-medium text-ronda-error sm:col-span-2">
+              {saveError}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CreateLocalModal({
   onClose,

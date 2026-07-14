@@ -106,6 +106,15 @@ export type StaffCommercialContactPerson = {
   createdAt: string;
 };
 
+export type StaffStandaloneContactPerson = StaffCommercialContactPerson & {
+  linkedEntity: string | null;
+  city: string;
+  stage: StaffContactStage;
+  potential: number;
+  owner: string;
+  lastActivity: string | null;
+};
+
 export type StaffCommercialContact = {
   id: string;
   restaurantName: string;
@@ -172,6 +181,13 @@ export type CreateStaffCommercialContactInput = {
     percentage: number;
     label: string;
   };
+};
+
+export type CreateStaffContactPersonInput = {
+  name: string;
+  role?: string;
+  phone?: string;
+  email?: string;
 };
 
 export type AutomationStatus = 'draft' | 'active' | 'paused';
@@ -353,6 +369,23 @@ export async function getStaffContacts(): Promise<StaffCommercialContact[]> {
   return res.json();
 }
 
+export async function getStaffContactPeople(): Promise<StaffStandaloneContactPerson[]> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${API_URL}/staff/contacts/people`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`No se pudieron cargar las personas${detail ? `: ${detail}` : ''}`);
+  }
+
+  return res.json();
+}
+
 export async function createStaffContact(input: CreateStaffCommercialContactInput): Promise<StaffCommercialContact> {
   const res = await fetch(`${API_URL}/staff/contacts`, {
     method: 'POST',
@@ -364,6 +397,22 @@ export async function createStaffContact(input: CreateStaffCommercialContactInpu
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.message || `No se pudo crear el contacto (${res.status})`);
+  }
+
+  return res.json();
+}
+
+export async function createStaffContactPerson(input: CreateStaffContactPersonInput): Promise<StaffStandaloneContactPerson> {
+  const res = await fetch(`${API_URL}/staff/contacts/people`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `No se pudo crear la persona (${res.status})`);
   }
 
   return res.json();
