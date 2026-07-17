@@ -69,6 +69,8 @@ const hospitalityRoles = [
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
+const workShiftOptions = ['Mañana', 'Tarde', 'Noche', 'Partido', 'Flexible'];
+
 type AddressPrediction = {
   placeId: string;
   label: string;
@@ -272,9 +274,14 @@ export function ContactsPageClient() {
       contact.people.map((person) => ({
         id: person.id,
         name: person.name,
+        firstName: person.firstName ?? '',
+        lastName: person.lastName ?? '',
         role: person.role ?? '',
         phone: person.phone ?? '',
         email: person.email ?? '',
+        socialLinks: person.socialLinks ?? '',
+        workingHours: person.workingHours ?? '',
+        commercialRelation: person.commercialRelation ?? '',
         city: contact.city,
         linkedEntity: contact.restaurantName,
         stage: contact.stage,
@@ -289,9 +296,14 @@ export function ContactsPageClient() {
       ...standalonePeople.map((person) => ({
         id: person.id,
         name: person.name,
+        firstName: person.firstName ?? '',
+        lastName: person.lastName ?? '',
         role: person.role ?? '',
         phone: person.phone ?? '',
         email: person.email ?? '',
+        socialLinks: person.socialLinks ?? '',
+        workingHours: person.workingHours ?? '',
+        commercialRelation: person.commercialRelation ?? '',
         city: person.city,
         linkedEntity: person.linkedEntity,
         stage: person.stage,
@@ -990,10 +1002,14 @@ export function ContactsPageClient() {
 
 type LocalPersonDraft = {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   role: string;
   phone: string;
   email: string;
+  socialLinks: string;
+  workingHours: string;
+  commercialRelation: string;
 };
 
 type LocalFormDraft = {
@@ -1027,7 +1043,16 @@ function CreatePersonModal({
   onClose: () => void;
   onCreated: (person: StaffStandaloneContactPerson) => void;
 }) {
-  const [draft, setDraft] = useState<CreateStaffContactPersonInput>({ name: '', role: '', phone: '', email: '' });
+  const [draft, setDraft] = useState<CreateStaffContactPersonInput>({
+    firstName: '',
+    lastName: '',
+    role: '',
+    phone: '',
+    email: '',
+    socialLinks: '',
+    workingHours: '',
+    commercialRelation: '',
+  });
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -1039,19 +1064,26 @@ function CreatePersonModal({
 
   async function savePerson() {
     setSaveError(null);
-    if (!draft.name.trim()) {
+    if (!draft.firstName?.trim()) {
       setSaveError('El nombre de la persona es obligatorio.');
       return;
     }
 
     const clean = (value?: string) => value?.trim() || undefined;
+    const firstName = draft.firstName.trim();
+    const lastName = clean(draft.lastName);
     setIsSaving(true);
     try {
       onCreated(await createStaffContactPerson({
-        name: draft.name.trim(),
+        name: [firstName, lastName].filter(Boolean).join(' '),
+        firstName,
+        lastName,
         role: clean(draft.role),
         phone: clean(draft.phone),
         email: clean(draft.email),
+        socialLinks: clean(draft.socialLinks),
+        workingHours: clean(draft.workingHours),
+        commercialRelation: clean(draft.commercialRelation),
       }));
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'No se pudo guardar la persona');
@@ -1061,20 +1093,21 @@ function CreatePersonModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ronda-coffee/45 p-4 backdrop-blur-sm sm:p-6">
-      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-ronda-border bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 px-5 py-5 sm:px-6">
-          <div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ronda-coffee/45 p-0 backdrop-blur-sm sm:p-5 lg:p-8">
+      <div className="flex h-full w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[92vh] sm:rounded-xl sm:border sm:border-ronda-border">
+        <div className="shrink-0 bg-white px-4 pb-5 pt-4 sm:px-6 sm:pt-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <h2 className="text-2xl font-semibold text-ronda-text">Nueva persona</h2>
             <p className="mt-1 text-sm text-ronda-muted">
               Registra un contacto comercial aunque todavía no esté asociado a un local.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex w-full gap-2 sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              className="min-h-10 rounded-lg border border-ronda-border bg-white px-4 text-sm font-semibold text-ronda-coffee transition hover:bg-ronda-bg"
+              className="min-h-10 flex-1 rounded-lg border border-ronda-border bg-white px-4 text-sm font-semibold text-ronda-coffee transition hover:bg-ronda-bg sm:flex-none"
             >
               Cancelar
             </button>
@@ -1082,23 +1115,43 @@ function CreatePersonModal({
               type="button"
               disabled={!hasChanges || isSaving}
               onClick={savePerson}
-              className="min-h-10 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-h-10 flex-1 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
             >
               {isSaving ? 'Guardando...' : 'Guardar persona'}
             </button>
           </div>
         </div>
 
-        <div className="grid gap-4 px-5 pb-5 sm:grid-cols-2 sm:px-6 sm:pb-6">
-          <ControlledField label="Nombre" value={draft.name ?? ''} onChange={(value) => updateDraft('name', value)} required />
-          <ControlledSelect label="Cargo" value={draft.role ?? ''} onChange={(value) => updateDraft('role', value)} options={hospitalityRoles} />
-          <ControlledField label="Teléfono" value={draft.phone ?? ''} onChange={(value) => updateDraft('phone', value)} />
-          <ControlledField label="Email" value={draft.email ?? ''} onChange={(value) => updateDraft('email', value)} type="email" />
-          {saveError ? (
-            <div className="rounded-lg border border-ronda-error/30 bg-red-50 px-4 py-3 text-sm font-medium text-ronda-error sm:col-span-2">
-              {saveError}
-            </div>
-          ) : null}
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto bg-white px-4 py-2 sm:px-6">
+          <div className="mx-auto w-full max-w-5xl">
+            <FormSection title="Información básica">
+              <ControlledField label="Nombre" value={draft.firstName ?? ''} onChange={(value) => updateDraft('firstName', value)} required />
+              <ControlledField label="Apellidos" value={draft.lastName ?? ''} onChange={(value) => updateDraft('lastName', value)} />
+              <ControlledSelect label="Cargo" value={draft.role ?? ''} onChange={(value) => updateDraft('role', value)} options={hospitalityRoles} />
+            </FormSection>
+
+            <FormSection title="Contacto">
+              <ControlledField label="Teléfono" value={draft.phone ?? ''} onChange={(value) => updateDraft('phone', value)} />
+              <ControlledField label="Email" value={draft.email ?? ''} onChange={(value) => updateDraft('email', value)} type="email" />
+              <ControlledField label="Redes sociales" value={draft.socialLinks ?? ''} onChange={(value) => updateDraft('socialLinks', value)} placeholder="@instagram, LinkedIn, web..." />
+            </FormSection>
+
+            <FormSection title="Horario laboral">
+              <WorkScheduleInput value={draft.workingHours ?? ''} onChange={(value) => updateDraft('workingHours', value)} />
+            </FormSection>
+
+            <FormSection title="Relación comercial">
+              <ControlledField label="Relación comercial" value={draft.commercialRelation ?? ''} onChange={(value) => updateDraft('commercialRelation', value)} placeholder="Hija del dueño, socio, contacto de confianza..." />
+            </FormSection>
+
+            {saveError ? (
+              <div className="mb-6 rounded-lg border border-ronda-error/30 bg-red-50 px-4 py-3 text-sm font-medium text-ronda-error">
+                {saveError}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
@@ -1144,7 +1197,7 @@ function CreateLocalModal({
 
   function addPerson() {
     markDirty();
-    setPeopleDrafts((current) => [...current, { id: crypto.randomUUID(), name: '', role: '', phone: '', email: '' }]);
+    setPeopleDrafts((current) => [...current, { id: crypto.randomUUID(), firstName: '', lastName: '', role: '', phone: '', email: '', socialLinks: '', workingHours: '', commercialRelation: '' }]);
   }
 
   function removePerson(id: string) {
@@ -1186,12 +1239,17 @@ function CreateLocalModal({
       googleMapsUrl: clean(formDraft.googleMapsUrl),
       stage: evaluationResult.completed > 0 ? 'visited' : 'lead',
       people: peopleDrafts
-        .filter((person) => person.name.trim())
+        .filter((person) => person.firstName.trim())
         .map((person) => ({
-          name: person.name,
+          name: [person.firstName.trim(), clean(person.lastName)].filter(Boolean).join(' '),
+          firstName: person.firstName.trim(),
+          lastName: clean(person.lastName),
           role: clean(person.role),
           phone: clean(person.phone),
           email: clean(person.email),
+          socialLinks: clean(person.socialLinks),
+          workingHours: clean(person.workingHours),
+          commercialRelation: clean(person.commercialRelation),
         })),
       evaluation: evaluationResult.completed > 0
         ? {
@@ -1394,7 +1452,7 @@ function LocalDetailsStep({
         <div className="mt-4 grid gap-3">
           {peopleDrafts.length === 0 ? (
             <p className="rounded-lg border border-dashed border-ronda-border bg-ronda-bg px-3 py-3 text-sm text-ronda-muted">
-              Sin personas asociadas. Puedes guardar el local y anadir personas mas adelante.
+              Sin personas asociadas. Puedes guardar el local y a?adir personas mas adelante.
             </p>
           ) : peopleDrafts.map((person, index) => (
             <div key={person.id} className="py-4">
@@ -1412,10 +1470,14 @@ function LocalDetailsStep({
                 </button>
               </div>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <ControlledField label="Nombre" value={person.name} onChange={(value) => onUpdatePerson(person.id, 'name', value)} />
+                <ControlledField label="Nombre" value={person.firstName} onChange={(value) => onUpdatePerson(person.id, 'firstName', value)} />
+                <ControlledField label="Apellidos" value={person.lastName} onChange={(value) => onUpdatePerson(person.id, 'lastName', value)} />
                 <ControlledSelect label="Cargo" value={person.role} onChange={(value) => onUpdatePerson(person.id, 'role', value)} options={hospitalityRoles} />
                 <ControlledField label="Teléfono" value={person.phone} onChange={(value) => onUpdatePerson(person.id, 'phone', value)} />
                 <ControlledField label="Email" value={person.email} onChange={(value) => onUpdatePerson(person.id, 'email', value)} type="email" />
+                <ControlledField label="Redes sociales" value={person.socialLinks} onChange={(value) => onUpdatePerson(person.id, 'socialLinks', value)} placeholder="@instagram, LinkedIn, web..." />
+                <WorkScheduleInput value={person.workingHours} onChange={(value) => onUpdatePerson(person.id, 'workingHours', value)} />
+                <ControlledField label="Relación comercial" value={person.commercialRelation} onChange={(value) => onUpdatePerson(person.id, 'commercialRelation', value)} placeholder="Hija del dueño, socio..." />
               </div>
             </div>
           ))}
@@ -2166,7 +2228,7 @@ function AddressAutocomplete({
 
   return (
     <div ref={containerRef} className="relative z-[1000] grid gap-1.5 text-xs font-semibold uppercase text-ronda-muted">
-      Direccion
+      Dirección
       <input
         value={value}
         onFocus={() => setOpen(true)}
@@ -2331,6 +2393,36 @@ function ControlledField({
         className="min-h-11 rounded-lg border border-ronda-border bg-ronda-bg px-3 text-sm font-medium normal-case text-ronda-text outline-none transition placeholder:text-ronda-muted/60 focus:border-ronda-gold focus:ring-2 focus:ring-ronda-gold"
       />
     </label>
+  );
+}
+
+function parseWorkSchedule(value: string) {
+  const [shiftPart = '', hoursPart = ''] = value.split(' · ');
+  const [start = '', end = ''] = hoursPart.split('-');
+  return { shift: shiftPart, start, end };
+}
+
+function formatWorkSchedule(shift: string, start: string, end: string) {
+  const hours = [start, end].filter(Boolean).join('-');
+  return [shift, hours].filter(Boolean).join(' · ');
+}
+
+function WorkScheduleInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const parsed = parseWorkSchedule(value);
+
+  function update(next: Partial<ReturnType<typeof parseWorkSchedule>>) {
+    const shift = next.shift ?? parsed.shift;
+    const start = next.start ?? parsed.start;
+    const end = next.end ?? parsed.end;
+    onChange(formatWorkSchedule(shift, start, end));
+  }
+
+  return (
+    <div className="grid gap-3 md:col-span-2 xl:col-span-2 xl:grid-cols-3">
+      <ControlledSelect label="Turno" value={parsed.shift} onChange={(shift) => update({ shift })} options={workShiftOptions} />
+      <ControlledField label="Hora inicio" value={parsed.start} onChange={(start) => update({ start })} type="time" />
+      <ControlledField label="Hora fin" value={parsed.end} onChange={(end) => update({ end })} type="time" />
+    </div>
   );
 }
 

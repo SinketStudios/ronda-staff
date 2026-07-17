@@ -100,9 +100,14 @@ export type StaffContactStage = 'lead' | 'visited' | 'conversation' | 'meeting' 
 export type StaffCommercialContactPerson = {
   id: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
   role: string | null;
   phone: string | null;
   email: string | null;
+  socialLinks: string | null;
+  workingHours: string | null;
+  commercialRelation: string | null;
   createdAt: string;
 };
 
@@ -118,9 +123,14 @@ export type StaffStandaloneContactPerson = StaffCommercialContactPerson & {
 export type StaffContactPersonListItem = {
   id: string;
   name: string;
+  firstName: string;
+  lastName: string;
   role: string;
   phone: string;
   email: string;
+  socialLinks: string;
+  workingHours: string;
+  commercialRelation: string;
   city: string;
   linkedEntity: string | null;
   stage: StaffContactStage;
@@ -185,9 +195,14 @@ export type CreateStaffCommercialContactInput = {
   stage?: StaffContactStage;
   people?: Array<{
     name: string;
+    firstName?: string;
+    lastName?: string;
     role?: string;
     phone?: string;
     email?: string;
+    socialLinks?: string;
+    workingHours?: string;
+    commercialRelation?: string;
   }>;
   evaluation?: {
     answers: Record<string, number>;
@@ -199,10 +214,15 @@ export type CreateStaffCommercialContactInput = {
 };
 
 export type CreateStaffContactPersonInput = {
-  name: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   role?: string;
   phone?: string;
   email?: string;
+  socialLinks?: string;
+  workingHours?: string;
+  commercialRelation?: string;
 };
 
 export type UpdateStaffCommercialContactInput = Partial<Omit<CreateStaffCommercialContactInput, 'evaluation'>>;

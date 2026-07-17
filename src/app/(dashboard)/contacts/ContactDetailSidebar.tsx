@@ -32,21 +32,26 @@ type ContactEditDraft = {
   instagram: string;
   tiktok: string;
   googleMapsUrl: string;
-  people: Array<{ id: string; name: string; role: string; phone: string; email: string }>;
+  people: Array<{ id: string; name: string; firstName: string; lastName: string; role: string; phone: string; email: string; socialLinks: string; workingHours: string; commercialRelation: string }>;
 };
 
 type PersonEditDraft = {
   name: string;
+  firstName: string;
+  lastName: string;
   role: string;
   phone: string;
   email: string;
+  socialLinks: string;
+  workingHours: string;
+  commercialRelation: string;
 };
 
 const stageData: Record<StaffContactStage, { label: string; className: string }> = {
   lead: { label: 'Contacto', className: 'bg-slate-100 text-slate-700' },
   visited: { label: 'Visitado', className: 'bg-ronda-bg text-ronda-muted' },
-  conversation: { label: 'Conversacion', className: 'bg-blue-50 text-blue-700' },
-  meeting: { label: 'Reunion', className: 'bg-violet-50 text-violet-700' },
+  conversation: { label: 'Conversación', className: 'bg-blue-50 text-blue-700' },
+  meeting: { label: 'Reunión', className: 'bg-violet-50 text-violet-700' },
   proposal: { label: 'Propuesta', className: 'bg-ronda-gold/10 text-ronda-gold-dark' },
   closed: { label: 'Cerrado', className: 'bg-ronda-success/10 text-ronda-success' },
 };
@@ -54,8 +59,8 @@ const stageData: Record<StaffContactStage, { label: string; className: string }>
 const stageOptions: Array<{ value: StaffContactStage; label: string }> = [
   { value: 'lead', label: 'Contacto' },
   { value: 'visited', label: 'Visitado' },
-  { value: 'conversation', label: 'Conversacion' },
-  { value: 'meeting', label: 'Reunion' },
+  { value: 'conversation', label: 'Conversación' },
+  { value: 'meeting', label: 'Reunión' },
   { value: 'proposal', label: 'Propuesta' },
   { value: 'closed', label: 'Cerrado' },
 ];
@@ -72,7 +77,7 @@ const hospitalityRoles = [
   'Responsable de turno',
   'Responsable de sala',
   'Maitre',
-  'Host / Recepcion',
+  'Host / Recepción',
   'Camarero',
   'Jefe de rango',
   'Runner',
@@ -94,7 +99,7 @@ const hospitalityRoles = [
   'Repartidor',
   'Responsable de compras',
   'Responsable de proveedores',
-  'Administracion',
+  'Administración',
   'Contabilidad',
   'Marketing',
   'Recursos humanos',
@@ -103,6 +108,8 @@ const hospitalityRoles = [
   'Seguridad',
   'Otro',
 ];
+
+const workShiftOptions = ['Mañana', 'Tarde', 'Noche', 'Partido', 'Flexible'];
 
 function formatDate(value: string | null) {
   if (!value) return 'Sin actividad';
@@ -128,9 +135,14 @@ function makeContactDraft(contact: StaffCommercialContact): ContactEditDraft {
     people: contact.people.map((person) => ({
       id: person.id,
       name: person.name,
+      firstName: person.firstName ?? '',
+      lastName: person.lastName ?? '',
       role: person.role ?? '',
       phone: person.phone ?? '',
       email: person.email ?? '',
+      socialLinks: person.socialLinks ?? '',
+      workingHours: person.workingHours ?? '',
+      commercialRelation: person.commercialRelation ?? '',
     })),
   };
 }
@@ -138,9 +150,14 @@ function makeContactDraft(contact: StaffCommercialContact): ContactEditDraft {
 function makePersonDraft(person: StaffContactPersonListItem): PersonEditDraft {
   return {
     name: person.name,
+    firstName: person.firstName ?? '',
+    lastName: person.lastName ?? '',
     role: person.role ?? '',
     phone: person.phone ?? '',
     email: person.email ?? '',
+    socialLinks: person.socialLinks ?? '',
+    workingHours: person.workingHours ?? '',
+    commercialRelation: person.commercialRelation ?? '',
   };
 }
 
@@ -239,9 +256,14 @@ export function ContactDetailSidebar({
             .filter((person) => person.name.trim())
             .map((person) => ({
               name: person.name.trim(),
+              firstName: clean(person.firstName),
+              lastName: clean(person.lastName),
               role: clean(person.role),
               phone: clean(person.phone),
               email: clean(person.email),
+              socialLinks: clean(person.socialLinks),
+              workingHours: clean(person.workingHours),
+              commercialRelation: clean(person.commercialRelation),
             })),
         });
 
@@ -258,18 +280,28 @@ export function ContactDetailSidebar({
 
         const updated = await updateStaffContactPerson(selection.item.id, {
           name: personDraft.name.trim(),
+          firstName: clean(personDraft.firstName),
+          lastName: clean(personDraft.lastName),
           role: clean(personDraft.role),
           phone: clean(personDraft.phone),
           email: clean(personDraft.email),
+          socialLinks: clean(personDraft.socialLinks),
+          workingHours: clean(personDraft.workingHours),
+          commercialRelation: clean(personDraft.commercialRelation),
         });
         setSelectedContactPerson({
           ...selection.item,
           name: updated.name,
+          firstName: updated.firstName ?? '',
+          lastName: updated.lastName ?? '',
           role: updated.role ?? '',
           phone: updated.phone ?? '',
           email: updated.email ?? '',
+          socialLinks: updated.socialLinks ?? '',
+          workingHours: updated.workingHours ?? '',
+          commercialRelation: updated.commercialRelation ?? '',
         });
-        const nextPerson = { ...selection.item, name: updated.name, role: updated.role ?? '', phone: updated.phone ?? '', email: updated.email ?? '' };
+        const nextPerson = { ...selection.item, name: updated.name, firstName: updated.firstName ?? '', lastName: updated.lastName ?? '', role: updated.role ?? '', phone: updated.phone ?? '', email: updated.email ?? '', socialLinks: updated.socialLinks ?? '', workingHours: updated.workingHours ?? '', commercialRelation: updated.commercialRelation ?? '' };
         onPersonUpdated?.(nextPerson);
         setPersonDraft(makePersonDraft(nextPerson));
       }
@@ -408,7 +440,7 @@ function ContactEditForm({ draft, onChange }: { draft: ContactEditDraft; onChang
     onChange({ ...draft, [key]: value });
   }
 
-  function updatePerson(id: string, key: 'name' | 'role' | 'phone' | 'email', value: string) {
+  function updatePerson(id: string, key: 'name' | 'firstName' | 'lastName' | 'role' | 'phone' | 'email' | 'socialLinks' | 'workingHours' | 'commercialRelation', value: string) {
     update(
       'people',
       draft.people.map((person) => (person.id === id ? { ...person, [key]: value } : person)),
@@ -416,7 +448,7 @@ function ContactEditForm({ draft, onChange }: { draft: ContactEditDraft; onChang
   }
 
   function addPerson() {
-    update('people', [...draft.people, { id: crypto.randomUUID(), name: '', role: '', phone: '', email: '' }]);
+    update('people', [...draft.people, { id: crypto.randomUUID(), name: '', firstName: '', lastName: '', role: '', phone: '', email: '', socialLinks: '', workingHours: '', commercialRelation: '' }]);
   }
 
   function removePerson(id: string) {
@@ -425,19 +457,19 @@ function ContactEditForm({ draft, onChange }: { draft: ContactEditDraft; onChang
 
   return (
     <>
-      <DetailSection title="Informacion basica">
+      <DetailSection title="Información básica">
         <EditField label="Nombre del local" value={draft.localName} onChange={(value) => update('localName', value)} required />
         <EditField label="Tipo de local" value={draft.venueType} onChange={(value) => update('venueType', value)} />
-        <EditField label="Telefono" value={draft.phone} onChange={(value) => update('phone', value)} />
+        <EditField label="Teléfono" value={draft.phone} onChange={(value) => update('phone', value)} />
         <EditField label="Email" value={draft.email} onChange={(value) => update('email', value)} type="email" />
         <EditSelect label="Estado" value={draft.stage} onChange={(value) => update('stage', value)} />
       </DetailSection>
 
       <DetailSection title="Localizacion">
-        <EditField label="Direccion" value={draft.address} onChange={(value) => update('address', value)} />
+        <EditField label="Dirección" value={draft.address} onChange={(value) => update('address', value)} />
         <EditField label="Ciudad" value={draft.city} onChange={(value) => update('city', value)} />
         <EditField label="Provincia" value={draft.province} onChange={(value) => update('province', value)} />
-        <EditField label="Codigo postal" value={draft.postalCode} onChange={(value) => update('postalCode', value)} />
+        <EditField label="C?digo postal" value={draft.postalCode} onChange={(value) => update('postalCode', value)} />
       </DetailSection>
 
       <DetailSection title="Personas asociadas">
@@ -463,10 +495,15 @@ function ContactEditForm({ draft, onChange }: { draft: ContactEditDraft; onChang
                 </button>
               </div>
               <div className="grid gap-3">
-                <EditField label="Nombre" value={person.name} onChange={(value) => updatePerson(person.id, 'name', value)} />
+                <EditField label="Nombre visible" value={person.name} onChange={(value) => updatePerson(person.id, 'name', value)} />
+                <EditField label="Nombre" value={person.firstName} onChange={(value) => updatePerson(person.id, 'firstName', value)} />
+                <EditField label="Apellidos" value={person.lastName} onChange={(value) => updatePerson(person.id, 'lastName', value)} />
                 <RoleSelect value={person.role} onChange={(value) => updatePerson(person.id, 'role', value)} />
-                <EditField label="Telefono" value={person.phone} onChange={(value) => updatePerson(person.id, 'phone', value)} />
+                <EditField label="Teléfono" value={person.phone} onChange={(value) => updatePerson(person.id, 'phone', value)} />
                 <EditField label="Email" value={person.email} onChange={(value) => updatePerson(person.id, 'email', value)} type="email" />
+                <EditField label="Redes sociales" value={person.socialLinks} onChange={(value) => updatePerson(person.id, 'socialLinks', value)} />
+                <EditWorkScheduleField value={person.workingHours} onChange={(value) => updatePerson(person.id, 'workingHours', value)} />
+                <EditField label="Relación comercial" value={person.commercialRelation} onChange={(value) => updatePerson(person.id, 'commercialRelation', value)} />
               </div>
             </div>
           ))}
@@ -487,10 +524,15 @@ function ContactEditForm({ draft, onChange }: { draft: ContactEditDraft; onChang
 function PersonEditForm({ draft, onChange }: { draft: PersonEditDraft; onChange: (draft: PersonEditDraft) => void }) {
   return (
     <DetailSection title="Datos de la persona">
-      <EditField label="Nombre" value={draft.name} onChange={(value) => onChange({ ...draft, name: value })} required />
+      <EditField label="Nombre visible" value={draft.name} onChange={(value) => onChange({ ...draft, name: value })} required />
+      <EditField label="Nombre" value={draft.firstName} onChange={(value) => onChange({ ...draft, firstName: value })} />
+      <EditField label="Apellidos" value={draft.lastName} onChange={(value) => onChange({ ...draft, lastName: value })} />
       <RoleSelect value={draft.role} onChange={(value) => onChange({ ...draft, role: value })} />
-      <EditField label="Telefono" value={draft.phone} onChange={(value) => onChange({ ...draft, phone: value })} />
+      <EditField label="Teléfono" value={draft.phone} onChange={(value) => onChange({ ...draft, phone: value })} />
       <EditField label="Email" value={draft.email} onChange={(value) => onChange({ ...draft, email: value })} type="email" />
+      <EditField label="Redes sociales" value={draft.socialLinks} onChange={(value) => onChange({ ...draft, socialLinks: value })} />
+      <EditWorkScheduleField value={draft.workingHours} onChange={(value) => onChange({ ...draft, workingHours: value })} />
+      <EditField label="Relación comercial" value={draft.commercialRelation} onChange={(value) => onChange({ ...draft, commercialRelation: value })} />
     </DetailSection>
   );
 }
@@ -500,15 +542,15 @@ function ContactContent({ contact }: { contact: StaffCommercialContact }) {
     <>
       <DetailSection title="Contacto">
         <DetailRow label="Persona principal" value={contact.contactName} />
-        <DetailRow label="Telefono" value={contact.phone} />
+        <DetailRow label="Teléfono" value={contact.phone} />
         <DetailRow label="Email" value={contact.email} />
       </DetailSection>
 
       <DetailSection title="Localizacion">
-        <DetailRow label="Direccion" value={contact.address} />
+        <DetailRow label="Dirección" value={contact.address} />
         <DetailRow label="Ciudad" value={contact.city} />
         <DetailRow label="Provincia" value={contact.province} />
-        <DetailRow label="Codigo postal" value={contact.postalCode} />
+        <DetailRow label="C?digo postal" value={contact.postalCode} />
       </DetailSection>
 
       <DetailSection title={`Personas asociadas (${contact.people.length})`}>
@@ -521,16 +563,17 @@ function ContactContent({ contact }: { contact: StaffCommercialContact }) {
                 <p className="text-sm font-medium text-ronda-text">{person.name}</p>
                 <p className="mt-1 text-xs text-ronda-muted">{person.role || 'Sin cargo'}</p>
                 <p className="mt-1 text-xs text-ronda-muted">{person.phone || person.email || 'Sin datos'}</p>
+                {person.commercialRelation ? <p className="mt-1 text-xs text-ronda-muted">{person.commercialRelation}</p> : null}
               </div>
             ))}
           </div>
         )}
       </DetailSection>
 
-      <DetailSection title="Evaluacion">
-        <DetailRow label="Puntuacion" value={contact.evaluation ? `${contact.evaluation.score}/${contact.evaluation.maxScore ?? 34}` : 'Sin evaluar'} />
+      <DetailSection title="Evaluación">
+        <DetailRow label="Puntuación" value={contact.evaluation ? `${contact.evaluation.score}/${contact.evaluation.maxScore ?? 34}` : 'Sin evaluar'} />
         <DetailRow label="Etiqueta" value={contact.evaluation?.label} />
-        <DetailRow label="Ultima actividad" value={formatDate(contact.lastActivity)} />
+        <DetailRow label="?ltima actividad" value={formatDate(contact.lastActivity)} />
       </DetailSection>
 
       <DetailSection title="Notas y redes">
@@ -548,8 +591,13 @@ function PersonContent({ person }: { person: StaffContactPersonListItem }) {
   return (
     <>
       <DetailSection title="Datos de contacto">
-        <DetailRow label="Telefono" value={person.phone} />
+        <DetailRow label="Nombre" value={person.firstName} />
+        <DetailRow label="Apellidos" value={person.lastName} />
+        <DetailRow label="Teléfono" value={person.phone} />
         <DetailRow label="Email" value={person.email} />
+        <DetailRow label="Redes sociales" value={person.socialLinks} />
+        <DetailRow label="Horario laboral" value={person.workingHours} />
+        <DetailRow label="Relación comercial" value={person.commercialRelation} />
         <DetailRow label="Ciudad" value={person.city} />
         <DetailRow label="Local asociado" value={person.linkedEntity} />
       </DetailSection>
@@ -557,7 +605,7 @@ function PersonContent({ person }: { person: StaffContactPersonListItem }) {
       <DetailSection title="Seguimiento">
         <DetailRow label="Responsable" value={person.owner} />
         <DetailRow label="Potencial" value={person.potential ? `${person.potential}/34` : 'Sin evaluar'} />
-        <DetailRow label="Ultima actividad" value={formatDate(person.lastActivity)} />
+        <DetailRow label="?ltima actividad" value={formatDate(person.lastActivity)} />
         <DetailRow label="Creado" value={formatDate(person.createdAt)} />
       </DetailSection>
     </>
@@ -606,6 +654,52 @@ function EditField({
         className="min-h-10 rounded-lg border border-ronda-border bg-ronda-bg px-3 text-sm font-medium normal-case text-ronda-text outline-none transition focus:border-ronda-gold focus:ring-2 focus:ring-ronda-gold"
       />
     </label>
+  );
+}
+
+function parseWorkSchedule(value: string) {
+  const [shiftPart = '', hoursPart = ''] = value.split(' · ');
+  const [start = '', end = ''] = hoursPart.split('-');
+  return { shift: shiftPart, start, end };
+}
+
+function formatWorkSchedule(shift: string, start: string, end: string) {
+  const hours = [start, end].filter(Boolean).join('-');
+  return [shift, hours].filter(Boolean).join(' · ');
+}
+
+function EditWorkScheduleField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const parsed = parseWorkSchedule(value);
+
+  function update(next: Partial<ReturnType<typeof parseWorkSchedule>>) {
+    const shift = next.shift ?? parsed.shift;
+    const start = next.start ?? parsed.start;
+    const end = next.end ?? parsed.end;
+    onChange(formatWorkSchedule(shift, start, end));
+  }
+
+  return (
+    <div className="grid gap-3">
+      <label className="grid gap-1.5 text-xs font-semibold uppercase text-ronda-muted">
+        Turno
+        <select
+          value={parsed.shift}
+          onChange={(event) => update({ shift: event.target.value })}
+          className="min-h-10 rounded-lg border border-ronda-border bg-ronda-bg px-3 text-sm font-medium normal-case text-ronda-text outline-none transition focus:border-ronda-gold focus:ring-2 focus:ring-ronda-gold"
+        >
+          <option value="">Sin turno</option>
+          {workShiftOptions.map((shift) => (
+            <option key={shift} value={shift}>
+              {shift}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <EditField label="Hora inicio" value={parsed.start} onChange={(start) => update({ start })} type="time" />
+        <EditField label="Hora fin" value={parsed.end} onChange={(end) => update({ end })} type="time" />
+      </div>
+    </div>
   );
 }
 

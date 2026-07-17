@@ -6,8 +6,8 @@ import type { StaffContactPersonListItem, StaffContactStage } from '@/lib/api';
 const stageData: Record<StaffContactStage, { label: string; className: string }> = {
   lead: { label: 'Contacto', className: 'bg-slate-100 text-slate-700' },
   visited: { label: 'Visitado', className: 'bg-ronda-bg text-ronda-muted' },
-  conversation: { label: 'Conversacion', className: 'bg-blue-50 text-blue-700' },
-  meeting: { label: 'Reunion', className: 'bg-violet-50 text-violet-700' },
+  conversation: { label: 'Conversación', className: 'bg-blue-50 text-blue-700' },
+  meeting: { label: 'Reunión', className: 'bg-violet-50 text-violet-700' },
   proposal: { label: 'Propuesta', className: 'bg-ronda-gold/10 text-ronda-gold-dark' },
   closed: { label: 'Cerrado', className: 'bg-ronda-success/10 text-ronda-success' },
 };
@@ -47,8 +47,13 @@ export function ContactPersonDetailPage({ person }: { person: StaffContactPerson
         <div className="grid max-w-5xl gap-8 lg:grid-cols-3">
           <section className="space-y-5">
             <SectionTitle>Datos de contacto</SectionTitle>
-            <DetailRow label="Telefono" value={person.phone} />
+            <DetailRow label="Nombre" value={person.firstName} />
+            <DetailRow label="Apellidos" value={person.lastName} />
+            <DetailRow label="Teléfono" value={person.phone} />
             <DetailRow label="Email" value={person.email} />
+            <DetailRow label="Redes sociales" value={person.socialLinks} />
+            <DetailRow label="Horario laboral" value={person.workingHours} />
+            <DetailRow label="Relación comercial" value={person.commercialRelation} />
             <DetailRow label="Ciudad" value={person.city} />
             <DetailRow label="Local asociado" value={person.linkedEntity} />
           </section>
@@ -57,7 +62,7 @@ export function ContactPersonDetailPage({ person }: { person: StaffContactPerson
             <SectionTitle>Seguimiento</SectionTitle>
             <DetailRow label="Responsable" value={person.owner} />
             <DetailRow label="Potencial" value={person.potential ? `${person.potential}/34` : 'Sin evaluar'} />
-            <DetailRow label="Ultima actividad" value={formatDate(person.lastActivity)} />
+            <DetailRow label="?ltima actividad" value={formatDate(person.lastActivity)} />
             <DetailRow label="Creado" value={formatDate(person.createdAt)} />
           </section>
 
