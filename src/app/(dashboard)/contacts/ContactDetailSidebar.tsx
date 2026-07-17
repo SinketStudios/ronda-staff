@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   deleteStaffContactPeople,
@@ -12,6 +13,7 @@ import {
   type StaffContactStage,
 } from '@/lib/api';
 import { useDashboard } from '../DashboardContext';
+import { CreateLocalModal } from './ContactsPageClient';
 
 export type ContactDetailSelection =
   | { type: 'contact'; item: StaffCommercialContact }
@@ -184,6 +186,7 @@ export function ContactDetailSidebar({
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(defaultEditing);
   const [error, setError] = useState('');
+  const [portalReady, setPortalReady] = useState(false);
   const isContact = selection.type === 'contact';
   const title = isContact ? selection.item.restaurantName : selection.item.name;
   const [contactDraft, setContactDraft] = useState<ContactEditDraft | null>(() => (isContact ? makeContactDraft(selection.item) : null));
@@ -195,6 +198,10 @@ export function ContactDetailSidebar({
     setContactDraft(selection.type === 'contact' ? makeContactDraft(selection.item) : null);
     setPersonDraft(selection.type === 'person' ? makePersonDraft(selection.item) : null);
   }, [defaultEditing, selection]);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   const hasChanges = useMemo(() => {
     if (selection.type === 'contact' && contactDraft) {
@@ -315,77 +322,60 @@ export function ContactDetailSidebar({
     }
   }
 
+  function cancelEditing() {
+    setEditing(false);
+    setError('');
+    setContactDraft(selection.type === 'contact' ? makeContactDraft(selection.item) : null);
+    setPersonDraft(selection.type === 'person' ? makePersonDraft(selection.item) : null);
+  }
+
   return (
+    <>
     <aside className="flex h-full w-full flex-col overflow-hidden rounded-lg border-l border-ronda-border bg-ronda-surface">
       <div className="shrink-0 border-b border-ronda-border bg-ronda-surface/80">
         <div className="flex h-20 items-center justify-between gap-2 px-6 py-4">
-          <h2 className="text-lg font-semibold text-ronda-text">{editing ? 'Editar' : 'Detalles'}</h2>
+          <h2 className="text-lg font-semibold text-ronda-text">Detalles</h2>
           <div className="flex items-center gap-2">
-            {editing ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditing(false);
-                    setError('');
-                    setContactDraft(selection.type === 'contact' ? makeContactDraft(selection.item) : null);
-                    setPersonDraft(selection.type === 'person' ? makePersonDraft(selection.item) : null);
-                  }}
-                  className="rounded-lg px-3 py-2 text-sm font-semibold text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-text"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleSave()}
-                  disabled={!hasChanges || saving}
-                  className="rounded-lg bg-ronda-coffee px-3 py-2 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {saving ? 'Guardando...' : 'Guardar'}
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    router.push(isContact ? `/contacts/${selection.item.id}` : `/contacts/people/${selection.item.id}`);
-                  }}
-                  className="rounded-lg p-2 text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-text"
-                  aria-label="Ver detalle"
-                  title="Ver detalle"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="rounded-lg p-2 text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-text"
-                  aria-label="Editar"
-                  title="Editar"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="rounded-lg p-2 text-ronda-error transition hover:bg-red-50 disabled:opacity-50"
-                  aria-label={isContact ? 'Eliminar local' : 'Eliminar persona'}
-                  title={isContact ? 'Eliminar local' : 'Eliminar persona'}
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 001-1V5a1 1 0 011-1h4a1 1 0 011 1v1a1 1 0 001 1m-8 0h8" />
-                  </svg>
-                </button>
-              </>
-            )}
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  router.push(isContact ? `/contacts/${selection.item.id}` : `/contacts/people/${selection.item.id}`);
+                }}
+                className="rounded-lg p-2 text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-text"
+                aria-label="Ver detalle"
+                title="Ver detalle"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="rounded-lg p-2 text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-text"
+                aria-label="Editar"
+                title="Editar"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded-lg p-2 text-ronda-error transition hover:bg-red-50 disabled:opacity-50"
+                aria-label={isContact ? 'Eliminar local' : 'Eliminar persona'}
+                title={isContact ? 'Eliminar local' : 'Eliminar persona'}
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 001-1V5a1 1 0 011-1h4a1 1 0 011 1v1a1 1 0 001 1m-8 0h8" />
+                </svg>
+              </button>
+            </>
             <button
               type="button"
               onClick={onClose}
@@ -402,48 +392,120 @@ export function ContactDetailSidebar({
       </div>
 
       <div className="flex-1 space-y-6 overflow-auto p-6">
-        {editing ? (
-          isContact && contactDraft ? (
-            <ContactEditForm draft={contactDraft} onChange={setContactDraft} />
-          ) : personDraft ? (
-            <PersonEditForm draft={personDraft} onChange={setPersonDraft} />
-          ) : null
-        ) : (
-          <>
-            <section>
-              <h3 className="mb-3 text-xs font-semibold uppercase text-ronda-muted">{isContact ? 'Local' : 'Persona'}</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-ronda-text">{title}</p>
-                  <p className="mt-1 text-xs text-ronda-muted">
-                    {isContact ? selection.item.venueType || 'Sin tipo de local' : selection.item.role || 'Sin cargo'}
-                  </p>
-                </div>
-                <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${stageData[selection.item.stage].className}`}>
-                  {stageData[selection.item.stage].label}
-                </span>
+        <>
+          <section>
+            <h3 className="mb-3 text-xs font-semibold uppercase text-ronda-muted">{isContact ? 'Local' : 'Persona'}</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-ronda-text">{title}</p>
+                <p className="mt-1 text-xs text-ronda-muted">
+                  {isContact ? selection.item.venueType || 'Sin tipo de local' : selection.item.role || 'Sin cargo'}
+                </p>
               </div>
-            </section>
+              <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${stageData[selection.item.stage].className}`}>
+                {stageData[selection.item.stage].label}
+              </span>
+            </div>
+          </section>
 
-            {isContact ? <ContactContent contact={selection.item} /> : <PersonContent person={selection.item} />}
-          </>
-        )}
+          {isContact ? <ContactContent contact={selection.item} /> : <PersonContent person={selection.item} />}
+        </>
 
         {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-ronda-error">{error}</p> : null}
       </div>
     </aside>
+
+    {editing && isContact ? (
+      <CreateLocalModal
+        initialContact={selection.item}
+        availablePeople={selection.item.people.map((person) => ({
+          id: person.id,
+          name: person.name,
+          firstName: person.firstName ?? '',
+          lastName: person.lastName ?? '',
+          role: person.role ?? '',
+          phone: person.phone ?? '',
+          email: person.email ?? '',
+          socialLinks: person.socialLinks ?? '',
+          workingHours: person.workingHours ?? '',
+          commercialRelation: person.commercialRelation ?? '',
+          city: selection.item.city,
+          linkedEntity: selection.item.restaurantName,
+          stage: selection.item.stage,
+          potential: selection.item.potential,
+          owner: selection.item.owner,
+          lastActivity: selection.item.lastActivity,
+          createdAt: selection.item.createdAt,
+        }))}
+        onClose={cancelEditing}
+        onCreated={(updated) => {
+          setSelectedContact(updated);
+          onContactUpdated?.(updated);
+          notifyContactsUpdated();
+          setEditing(false);
+        }}
+      />
+    ) : editing && portalReady ? createPortal((
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-ronda-coffee/45 p-0 backdrop-blur-sm sm:p-6 lg:p-8">
+        <div className="flex h-full w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[92vh] sm:rounded-xl sm:border sm:border-ronda-border">
+          <div className="shrink-0 bg-white px-4 pb-5 pt-4 sm:px-6 sm:pt-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h2 className="text-2xl font-semibold text-ronda-text">{isContact ? 'Editar local' : 'Editar persona'}</h2>
+                <p className="mt-1 text-sm text-ronda-muted">
+                  Actualiza los datos comerciales y de contacto.
+                </p>
+              </div>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  className="min-h-10 flex-1 rounded-lg border border-ronda-border bg-white px-4 text-sm font-semibold text-ronda-coffee transition hover:bg-ronda-bg sm:flex-none"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSave()}
+                  disabled={!hasChanges || saving}
+                  className="min-h-10 flex-1 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+                >
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto bg-white px-4 py-2 sm:px-6">
+            <div className="mx-auto w-full max-w-5xl">
+              {isContact && contactDraft ? (
+                <ContactEditForm draft={contactDraft} onChange={setContactDraft} />
+              ) : personDraft ? (
+                <PersonEditForm draft={personDraft} onChange={setPersonDraft} />
+              ) : null}
+
+              {error ? <p className="mb-6 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-ronda-error">{error}</p> : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    ), document.body) : null}
+    </>
   );
 }
 
 function ContactEditForm({ draft, onChange }: { draft: ContactEditDraft; onChange: (draft: ContactEditDraft) => void }) {
+  const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
+  const editingPerson = draft.people.find((person) => person.id === editingPersonId) ?? null;
+
   function update<K extends keyof ContactEditDraft>(key: K, value: ContactEditDraft[K]) {
     onChange({ ...draft, [key]: value });
   }
 
-  function updatePerson(id: string, key: 'name' | 'firstName' | 'lastName' | 'role' | 'phone' | 'email' | 'socialLinks' | 'workingHours' | 'commercialRelation', value: string) {
+  function updatePerson(personId: string, nextPerson: ContactEditDraft['people'][number]) {
     update(
       'people',
-      draft.people.map((person) => (person.id === id ? { ...person, [key]: value } : person)),
+      draft.people.map((person) => (person.id === personId ? nextPerson : person)),
     );
   }
 
@@ -478,34 +540,17 @@ function ContactEditForm({ draft, onChange }: { draft: ContactEditDraft; onChang
           onClick={addPerson}
           className="mb-3 min-h-9 rounded-lg border border-ronda-border bg-white px-3 text-sm font-semibold text-ronda-coffee transition hover:bg-ronda-bg"
         >
-          Anadir persona
+          Añadir persona
         </button>
         {draft.people.length === 0 ? <p className="text-sm text-ronda-muted">Sin personas asociadas</p> : null}
-        <div className="space-y-4">
-          {draft.people.map((person, index) => (
-            <div key={person.id} className="rounded-lg bg-ronda-bg p-3">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-ronda-text">Persona {index + 1}</p>
-                <button
-                  type="button"
-                  onClick={() => removePerson(person.id)}
-                  className="rounded-md px-2 py-1 text-xs font-semibold text-ronda-muted transition hover:bg-white"
-                >
-                  Quitar
-                </button>
-              </div>
-              <div className="grid gap-3">
-                <EditField label="Nombre visible" value={person.name} onChange={(value) => updatePerson(person.id, 'name', value)} />
-                <EditField label="Nombre" value={person.firstName} onChange={(value) => updatePerson(person.id, 'firstName', value)} />
-                <EditField label="Apellidos" value={person.lastName} onChange={(value) => updatePerson(person.id, 'lastName', value)} />
-                <RoleSelect value={person.role} onChange={(value) => updatePerson(person.id, 'role', value)} />
-                <EditField label="Teléfono" value={person.phone} onChange={(value) => updatePerson(person.id, 'phone', value)} />
-                <EditField label="Email" value={person.email} onChange={(value) => updatePerson(person.id, 'email', value)} type="email" />
-                <EditField label="Redes sociales" value={person.socialLinks} onChange={(value) => updatePerson(person.id, 'socialLinks', value)} />
-                <EditWorkScheduleField value={person.workingHours} onChange={(value) => updatePerson(person.id, 'workingHours', value)} />
-                <EditField label="Relación comercial" value={person.commercialRelation} onChange={(value) => updatePerson(person.id, 'commercialRelation', value)} />
-              </div>
-            </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {draft.people.map((person) => (
+            <EditablePersonRelationCard
+              key={person.id}
+              person={person}
+              onEdit={() => setEditingPersonId(person.id)}
+              onRemove={() => removePerson(person.id)}
+            />
           ))}
         </div>
       </DetailSection>
@@ -517,8 +562,136 @@ function ContactEditForm({ draft, onChange }: { draft: ContactEditDraft; onChang
         <EditField label="TikTok" value={draft.tiktok} onChange={(value) => update('tiktok', value)} />
         <EditField label="Google Maps" value={draft.googleMapsUrl} onChange={(value) => update('googleMapsUrl', value)} />
       </DetailSection>
+
+      {editingPerson ? (
+        <PersonRelationEditModal
+          person={editingPerson}
+          onClose={() => setEditingPersonId(null)}
+          onSave={(nextPerson) => {
+            updatePerson(editingPerson.id, nextPerson);
+            setEditingPersonId(null);
+          }}
+        />
+      ) : null}
     </>
   );
+}
+
+function EditablePersonRelationCard({
+  person,
+  onEdit,
+  onRemove,
+}: {
+  person: ContactEditDraft['people'][number];
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const displayName = person.name || [person.firstName, person.lastName].filter(Boolean).join(' ') || 'Persona sin nombre';
+
+  return (
+    <article className="rounded-xl border border-ronda-border bg-ronda-bg px-4 py-3 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-ronda-text">{displayName}</p>
+          {person.role ? (
+            <span className="mt-1 inline-flex rounded-full border border-ronda-gold/40 bg-white px-2 py-0.5 text-xs font-semibold text-ronda-coffee">
+              {person.role}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-lg p-2 text-ronda-muted transition hover:bg-white hover:text-ronda-coffee"
+            aria-label="Editar persona"
+            title="Editar persona"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-lg p-2 text-ronda-muted transition hover:bg-white hover:text-ronda-error"
+            aria-label="Quitar relación"
+            title="Quitar relación"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 001-1V5a1 1 0 011-1h4a1 1 0 011 1v1a1 1 0 001 1m-8 0h8" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-1 text-sm text-ronda-muted">
+        <p className="truncate">{person.phone || person.email || 'Sin datos de contacto'}</p>
+        {person.socialLinks ? <p className="truncate">{person.socialLinks}</p> : null}
+        {person.workingHours ? <p className="truncate">{person.workingHours}</p> : null}
+        {person.commercialRelation ? <p className="truncate">{person.commercialRelation}</p> : null}
+      </div>
+    </article>
+  );
+}
+
+function PersonRelationEditModal({
+  person,
+  onClose,
+  onSave,
+}: {
+  person: ContactEditDraft['people'][number];
+  onClose: () => void;
+  onSave: (person: ContactEditDraft['people'][number]) => void;
+}) {
+  const [draft, setDraft] = useState<PersonEditDraft>({
+    name: person.name,
+    firstName: person.firstName,
+    lastName: person.lastName,
+    role: person.role,
+    phone: person.phone,
+    email: person.email,
+    socialLinks: person.socialLinks,
+    workingHours: person.workingHours,
+    commercialRelation: person.commercialRelation,
+  });
+
+  return createPortal((
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-ronda-coffee/45 p-0 backdrop-blur-sm sm:p-6 lg:p-8">
+      <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[88vh] sm:rounded-xl sm:border sm:border-ronda-border">
+        <div className="shrink-0 bg-white px-4 pb-5 pt-4 sm:px-6 sm:pt-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-2xl font-semibold text-ronda-text">Editar persona</h2>
+              <p className="mt-1 text-sm text-ronda-muted">Actualiza los datos de esta persona asociada al local.</p>
+            </div>
+            <div className="flex w-full gap-2 sm:w-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-10 flex-1 rounded-lg border border-ronda-border bg-white px-4 text-sm font-semibold text-ronda-coffee transition hover:bg-ronda-bg sm:flex-none"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => onSave({ ...person, ...draft })}
+                className="min-h-10 flex-1 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark sm:flex-none"
+              >
+                Guardar persona
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto bg-white px-4 py-2 sm:px-6">
+          <div className="mx-auto w-full max-w-3xl">
+            <PersonEditForm draft={draft} onChange={setDraft} />
+          </div>
+        </div>
+      </div>
+    </div>
+  ), document.body);
 }
 
 function PersonEditForm({ draft, onChange }: { draft: PersonEditDraft; onChange: (draft: PersonEditDraft) => void }) {
@@ -615,7 +788,10 @@ function PersonContent({ person }: { person: StaffContactPersonListItem }) {
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-3 text-xs font-semibold uppercase text-ronda-muted">{title}</h3>
+      <div className="mb-4 flex items-center gap-3">
+        <span className="shrink-0 text-sm font-semibold text-ronda-muted">{title}</span>
+        <div className="h-px flex-1 bg-ronda-border" />
+      </div>
       <div className="space-y-2">{children}</div>
     </section>
   );

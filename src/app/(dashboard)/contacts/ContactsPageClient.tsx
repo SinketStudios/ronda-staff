@@ -8,6 +8,7 @@ import {
   deleteStaffContacts,
   getStaffContactPeople,
   getStaffContacts,
+  updateStaffContact,
   type CreateStaffContactPersonInput,
   type CreateStaffCommercialContactInput,
   type StaffCommercialContact,
@@ -16,6 +17,7 @@ import {
 } from '@/lib/api';
 import { useDashboard } from '../DashboardContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type ContactStage = 'lead' | 'visited' | 'conversation' | 'meeting' | 'proposal' | 'closed';
 type ContactTab = 'entities' | 'people';
@@ -978,6 +980,7 @@ export function ContactsPageClient() {
 
       {createLocalOpen ? (
         <CreateLocalModal
+          availablePeople={people}
           onCreated={(contact) => {
             setContacts((current) => [contact, ...current]);
             setCreateLocalOpen(false);
@@ -1002,6 +1005,7 @@ export function ContactsPageClient() {
 
 type LocalPersonDraft = {
   id: string;
+  sourcePersonId?: string;
   firstName: string;
   lastName: string;
   role: string;
@@ -1011,6 +1015,78 @@ type LocalPersonDraft = {
   workingHours: string;
   commercialRelation: string;
 };
+
+function splitPersonName(value: string) {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  const firstName = parts.shift() ?? '';
+  return { firstName, lastName: parts.join(' ') };
+}
+
+function personName(person: Pick<LocalPersonDraft, 'firstName' | 'lastName'>) {
+  return [person.firstName.trim(), person.lastName.trim()].filter(Boolean).join(' ');
+}
+
+function personItemToLocalDraft(person: PersonItem): LocalPersonDraft {
+  const fallbackName = splitPersonName(person.name);
+
+  return {
+    id: crypto.randomUUID(),
+    sourcePersonId: person.id,
+    firstName: person.firstName || fallbackName.firstName,
+    lastName: person.lastName || fallbackName.lastName,
+    role: person.role ?? '',
+    phone: person.phone ?? '',
+    email: person.email ?? '',
+    socialLinks: person.socialLinks ?? '',
+    workingHours: person.workingHours ?? '',
+    commercialRelation: person.commercialRelation ?? '',
+  };
+}
+
+function contactToLocalFormDraft(contact: ContactItem): LocalFormDraft {
+  return {
+    localName: contact.restaurantName,
+    venueType: contact.venueType ?? '',
+    phone: contact.phone ?? '',
+    email: contact.email ?? '',
+    notes: contact.notes ?? '',
+    web: contact.web ?? '',
+    instagram: contact.instagram ?? '',
+    tiktok: contact.tiktok ?? '',
+    googleMapsUrl: contact.googleMapsUrl ?? '',
+  };
+}
+
+function contactToLocationDraft(contact: ContactItem): LocationDraft {
+  return {
+    address: contact.address ?? '',
+    city: contact.city ?? '',
+    province: contact.province ?? '',
+    postalCode: contact.postalCode ?? '',
+    lat: contact.lat,
+    lng: contact.lng,
+    manual: false,
+  };
+}
+
+function contactPeopleToLocalDrafts(contact: ContactItem): LocalPersonDraft[] {
+  return contact.people.map((person) => {
+    const fallbackName = splitPersonName(person.name);
+
+    return {
+      id: person.id,
+      sourcePersonId: person.id,
+      firstName: person.firstName || fallbackName.firstName,
+      lastName: person.lastName || fallbackName.lastName,
+      role: person.role ?? '',
+      phone: person.phone ?? '',
+      email: person.email ?? '',
+      socialLinks: person.socialLinks ?? '',
+      workingHours: person.workingHours ?? '',
+      commercialRelation: person.commercialRelation ?? '',
+    };
+  });
+}
 
 type LocalFormDraft = {
   localName: string;
@@ -1039,13 +1115,18 @@ const emptyLocalForm: LocalFormDraft = {
 function CreatePersonModal({
   onClose,
   onCreated,
+  onCreatedDraft,
+  initialName = '',
 }: {
   onClose: () => void;
-  onCreated: (person: StaffStandaloneContactPerson) => void;
+  onCreated?: (person: StaffStandaloneContactPerson) => void;
+  onCreatedDraft?: (person: LocalPersonDraft) => void;
+  initialName?: string;
 }) {
+  const initialPersonName = splitPersonName(initialName);
   const [draft, setDraft] = useState<CreateStaffContactPersonInput>({
-    firstName: '',
-    lastName: '',
+    firstName: initialPersonName.firstName,
+    lastName: initialPersonName.lastName,
     role: '',
     phone: '',
     email: '',
@@ -1053,7 +1134,7 @@ function CreatePersonModal({
     workingHours: '',
     commercialRelation: '',
   });
-  const [hasChanges, setHasChanges] = useState(false);
+  const [hasChanges, setHasChanges] = useState(Boolean(initialName.trim()));
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -1074,6 +1155,22 @@ function CreatePersonModal({
     const lastName = clean(draft.lastName);
     setIsSaving(true);
     try {
+      if (onCreatedDraft) {
+        onCreatedDraft({
+          id: crypto.randomUUID(),
+          firstName,
+          lastName: lastName ?? '',
+          role: clean(draft.role) ?? '',
+          phone: clean(draft.phone) ?? '',
+          email: clean(draft.email) ?? '',
+          socialLinks: clean(draft.socialLinks) ?? '',
+          workingHours: clean(draft.workingHours) ?? '',
+          commercialRelation: clean(draft.commercialRelation) ?? '',
+        });
+        return;
+      }
+
+      if (!onCreated) return;
       onCreated(await createStaffContactPerson({
         name: [firstName, lastName].filter(Boolean).join(' '),
         firstName,
@@ -1158,21 +1255,33 @@ function CreatePersonModal({
   );
 }
 
-function CreateLocalModal({
+export function CreateLocalModal({
   onClose,
   onCreated,
+  availablePeople,
+  initialContact,
 }: {
   onClose: () => void;
   onCreated: (contact: ContactItem) => void;
+  availablePeople: PersonItem[];
+  initialContact?: ContactItem;
 }) {
-  const [formDraft, setFormDraft] = useState<LocalFormDraft>(emptyLocalForm);
-  const [peopleDrafts, setPeopleDrafts] = useState<LocalPersonDraft[]>([]);
+  const isEditing = Boolean(initialContact);
+  const [formDraft, setFormDraft] = useState<LocalFormDraft>(() => (initialContact ? contactToLocalFormDraft(initialContact) : emptyLocalForm));
+  const [peopleDrafts, setPeopleDrafts] = useState<LocalPersonDraft[]>(() => (initialContact ? contactPeopleToLocalDrafts(initialContact) : []));
+  const [personPickerOpen, setPersonPickerOpen] = useState(false);
+  const [personSearch, setPersonSearch] = useState('');
+  const [createLocalPersonOpen, setCreateLocalPersonOpen] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [evaluationOpen, setEvaluationOpen] = useState(false);
-  const [evaluationAnswers, setEvaluationAnswers] = useState<Record<string, number>>({});
-  const [locationDraft, setLocationDraft] = useState<LocationDraft>({
+  const [evaluationAnswers, setEvaluationAnswers] = useState<Record<string, number>>(() => {
+    if (!initialContact?.evaluation?.answers || typeof initialContact.evaluation.answers !== 'object') return {};
+    return initialContact.evaluation.answers as Record<string, number>;
+  });
+  const [locationDraft, setLocationDraft] = useState<LocationDraft>(() => initialContact ? contactToLocationDraft(initialContact) : {
     address: '',
     city: '',
     province: '',
@@ -1185,19 +1294,31 @@ function CreateLocalModal({
     setLocationDraft((current) => (current.lat === lat && current.lng === lng ? current : { ...current, lat, lng }));
   }, []);
   const markDirty = useCallback(() => setHasChanges(true), []);
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
   const updateManualMap = useCallback(async () => {
     const coordinates = await geocodeManualLocation(locationDraft);
     if (coordinates) updateLocationCoordinates(coordinates.lat, coordinates.lng);
   }, [locationDraft, updateLocationCoordinates]);
 
-  function updatePerson(id: string, key: keyof Omit<LocalPersonDraft, 'id'>, value: string) {
+  function addPersonFromPicker(person: PersonItem) {
     markDirty();
-    setPeopleDrafts((current) => current.map((person) => (person.id === id ? { ...person, [key]: value } : person)));
+    setPeopleDrafts((current) => {
+      if (current.some((draftPerson) => draftPerson.sourcePersonId === person.id)) return current;
+      return [...current, personItemToLocalDraft(person)];
+    });
+    setPersonPickerOpen(false);
+    setPersonSearch('');
   }
 
-  function addPerson() {
+  function addPersonDraft(person: LocalPersonDraft) {
     markDirty();
-    setPeopleDrafts((current) => [...current, { id: crypto.randomUUID(), firstName: '', lastName: '', role: '', phone: '', email: '', socialLinks: '', workingHours: '', commercialRelation: '' }]);
+    setPeopleDrafts((current) => [...current, person]);
+    setCreateLocalPersonOpen(false);
+    setPersonPickerOpen(false);
+    setPersonSearch('');
   }
 
   function removePerson(id: string) {
@@ -1237,7 +1358,7 @@ function CreateLocalModal({
       instagram: clean(formDraft.instagram),
       tiktok: clean(formDraft.tiktok),
       googleMapsUrl: clean(formDraft.googleMapsUrl),
-      stage: evaluationResult.completed > 0 ? 'visited' : 'lead',
+      stage: isEditing ? initialContact?.stage : evaluationResult.completed > 0 ? 'visited' : 'lead',
       people: peopleDrafts
         .filter((person) => person.firstName.trim())
         .map((person) => ({
@@ -1251,7 +1372,7 @@ function CreateLocalModal({
           workingHours: clean(person.workingHours),
           commercialRelation: clean(person.commercialRelation),
         })),
-      evaluation: evaluationResult.completed > 0
+      evaluation: !isEditing && evaluationResult.completed > 0
         ? {
             answers: evaluationAnswers,
             score: evaluationResult.score,
@@ -1264,7 +1385,7 @@ function CreateLocalModal({
 
     setIsSaving(true);
     try {
-      onCreated(await createStaffContact(input));
+      onCreated(isEditing && initialContact ? await updateStaffContact(initialContact.id, input) : await createStaffContact(input));
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'No se pudo guardar el local');
     } finally {
@@ -1272,8 +1393,10 @@ function CreateLocalModal({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ronda-coffee/45 p-0 backdrop-blur-sm sm:p-6 lg:p-8">
+  if (!portalReady) return null;
+
+  return createPortal((
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-ronda-coffee/45 p-0 backdrop-blur-sm sm:p-6 lg:p-8">
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:rounded-xl sm:border sm:border-ronda-border">
         <div className="shrink-0 bg-white px-4 pb-5 pt-4 sm:px-6 sm:pt-6">
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1292,14 +1415,16 @@ function CreateLocalModal({
                 onClick={saveLocal}
                 className="min-h-10 flex-1 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
               >
-                {isSaving ? 'Guardando...' : 'Guardar local'}
+                {isSaving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Guardar local'}
               </button>
             </div>
           </div>
 
           <div className="mx-auto mt-5 w-full max-w-7xl lg:mt-0 lg:pl-36 lg:pr-64">
-            <h2 className="text-2xl font-semibold text-ronda-text">Nuevo local</h2>
-            <p className="mt-1 text-sm text-ronda-muted">Registra un restaurante, bar o negocio potencial antes de convertirlo en cliente.</p>
+            <h2 className="text-2xl font-semibold text-ronda-text">{isEditing ? 'Editar local' : 'Nuevo local'}</h2>
+            <p className="mt-1 text-sm text-ronda-muted">
+              {isEditing ? 'Actualiza los datos del local, su ubicación y las personas asociadas.' : 'Registra un restaurante, bar o negocio potencial antes de convertirlo en cliente.'}
+            </p>
           </div>
         </div>
 
@@ -1309,10 +1434,15 @@ function CreateLocalModal({
               formDraft={formDraft}
               locationDraft={locationDraft}
               peopleDrafts={peopleDrafts}
+              availablePeople={availablePeople}
+              personPickerOpen={personPickerOpen}
+              personSearch={personSearch}
               evaluationAnswers={evaluationAnswers}
-              onAddPerson={addPerson}
+              onTogglePersonPicker={() => setPersonPickerOpen((current) => !current)}
+              onPersonSearchChange={setPersonSearch}
+              onSelectPerson={addPersonFromPicker}
+              onCreatePerson={() => setCreateLocalPersonOpen(true)}
               onRemovePerson={removePerson}
-              onUpdatePerson={updatePerson}
               onUpdateForm={updateForm}
               onManualMap={updateManualMap}
               onStartEvaluation={() => setEvaluationOpen(true)}
@@ -1329,6 +1459,14 @@ function CreateLocalModal({
           </div>
         </div>
 
+        {createLocalPersonOpen ? (
+          <CreatePersonModal
+            initialName={personSearch}
+            onCreatedDraft={addPersonDraft}
+            onClose={() => setCreateLocalPersonOpen(false)}
+          />
+        ) : null}
+
         {evaluationOpen ? (
           <EvaluationModal
             answers={evaluationAnswers}
@@ -1341,7 +1479,7 @@ function CreateLocalModal({
         ) : null}
       </div>
     </div>
-  );
+  ), document.body);
 }
 
 function FormSection({ title, children }: { title: string; description?: string; children: React.ReactNode }) {
@@ -1360,10 +1498,15 @@ function LocalDetailsStep({
   formDraft,
   locationDraft,
   peopleDrafts,
+  availablePeople,
+  personPickerOpen,
+  personSearch,
   evaluationAnswers,
-  onAddPerson,
+  onTogglePersonPicker,
+  onPersonSearchChange,
+  onSelectPerson,
+  onCreatePerson,
   onRemovePerson,
-  onUpdatePerson,
   onUpdateForm,
   onManualMap,
   onStartEvaluation,
@@ -1372,10 +1515,15 @@ function LocalDetailsStep({
   formDraft: LocalFormDraft;
   locationDraft: LocationDraft;
   peopleDrafts: LocalPersonDraft[];
+  availablePeople: PersonItem[];
+  personPickerOpen: boolean;
+  personSearch: string;
   evaluationAnswers: Record<string, number>;
-  onAddPerson: () => void;
+  onTogglePersonPicker: () => void;
+  onPersonSearchChange: (value: string) => void;
+  onSelectPerson: (person: PersonItem) => void;
+  onCreatePerson: () => void;
   onRemovePerson: (id: string) => void;
-  onUpdatePerson: (id: string, key: keyof Omit<LocalPersonDraft, 'id'>, value: string) => void;
   onUpdateForm: <K extends keyof LocalFormDraft>(key: K, value: LocalFormDraft[K]) => void;
   onManualMap: () => void;
   onStartEvaluation: () => void;
@@ -1440,46 +1588,25 @@ function LocalDetailsStep({
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <span className="shrink-0 text-sm font-semibold text-ronda-muted">Personal</span>
           <div className="h-px flex-1 bg-ronda-border" />
-          <button
-            type="button"
-            onClick={onAddPerson}
-            className="min-h-9 shrink-0 rounded-lg border border-ronda-border bg-white px-3 text-sm font-semibold text-ronda-coffee transition hover:bg-ronda-bg"
-          >
-            Añadir persona
-          </button>
+          <LocalPersonPicker
+            open={personPickerOpen}
+            search={personSearch}
+            people={availablePeople}
+            selectedPeople={peopleDrafts}
+            onToggle={onTogglePersonPicker}
+            onSearchChange={onPersonSearchChange}
+            onSelect={onSelectPerson}
+            onCreate={onCreatePerson}
+          />
         </div>
 
-        <div className="mt-4 grid gap-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           {peopleDrafts.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-ronda-border bg-ronda-bg px-3 py-3 text-sm text-ronda-muted">
-              Sin personas asociadas. Puedes guardar el local y a?adir personas mas adelante.
+            <p className="rounded-lg border border-dashed border-ronda-border bg-ronda-bg px-3 py-3 text-sm text-ronda-muted md:col-span-2">
+              Sin personas asociadas. Puedes guardar el local y añadir personas más adelante.
             </p>
-          ) : peopleDrafts.map((person, index) => (
-            <div key={person.id} className="py-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-ronda-coffee text-sm font-semibold text-white">{index + 1}</span>
-                  <p className="text-sm font-semibold text-ronda-text">Persona asociada</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onRemovePerson(person.id)}
-                  className="rounded-md px-2 py-1 text-xs font-semibold text-ronda-muted transition hover:bg-ronda-bg"
-                >
-                  Quitar
-                </button>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <ControlledField label="Nombre" value={person.firstName} onChange={(value) => onUpdatePerson(person.id, 'firstName', value)} />
-                <ControlledField label="Apellidos" value={person.lastName} onChange={(value) => onUpdatePerson(person.id, 'lastName', value)} />
-                <ControlledSelect label="Cargo" value={person.role} onChange={(value) => onUpdatePerson(person.id, 'role', value)} options={hospitalityRoles} />
-                <ControlledField label="Teléfono" value={person.phone} onChange={(value) => onUpdatePerson(person.id, 'phone', value)} />
-                <ControlledField label="Email" value={person.email} onChange={(value) => onUpdatePerson(person.id, 'email', value)} type="email" />
-                <ControlledField label="Redes sociales" value={person.socialLinks} onChange={(value) => onUpdatePerson(person.id, 'socialLinks', value)} placeholder="@instagram, LinkedIn, web..." />
-                <WorkScheduleInput value={person.workingHours} onChange={(value) => onUpdatePerson(person.id, 'workingHours', value)} />
-                <ControlledField label="Relación comercial" value={person.commercialRelation} onChange={(value) => onUpdatePerson(person.id, 'commercialRelation', value)} placeholder="Hija del dueño, socio..." />
-              </div>
-            </div>
+          ) : peopleDrafts.map((person) => (
+            <LocalPersonCard key={person.id} person={person} onRemove={() => onRemovePerson(person.id)} />
           ))}
         </div>
       </section>
@@ -1530,6 +1657,167 @@ function LocalDetailsStep({
         )}
       </section>
     </>
+  );
+}
+
+function LocalPersonPicker({
+  open,
+  search,
+  people,
+  selectedPeople,
+  onToggle,
+  onSearchChange,
+  onSelect,
+  onCreate,
+}: {
+  open: boolean;
+  search: string;
+  people: PersonItem[];
+  selectedPeople: LocalPersonDraft[];
+  onToggle: () => void;
+  onSearchChange: (value: string) => void;
+  onSelect: (person: PersonItem) => void;
+  onCreate: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const timeout = window.setTimeout(() => searchRef.current?.focus(), 30);
+    return () => window.clearTimeout(timeout);
+  }, [open]);
+
+  useEffect(() => {
+    function handleMouseDown(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) onToggle();
+    }
+
+    if (!open) return;
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, [onToggle, open]);
+
+  const selectedIds = new Set(selectedPeople.map((person) => person.sourcePersonId).filter(Boolean));
+  const available = people.filter((person) => !selectedIds.has(person.id));
+  const normalizedSearch = search.trim().toLowerCase();
+  const filtered = normalizedSearch
+    ? available.filter((person) =>
+        [person.name, person.role, person.phone, person.email, person.linkedEntity]
+          .filter(Boolean)
+          .some((value) => value!.toLowerCase().includes(normalizedSearch)),
+      )
+    : available;
+  const showCreate = search.trim().length > 0;
+
+  function handleCreate() {
+    if (!search.trim()) return;
+    onCreate();
+  }
+
+  return (
+    <div ref={containerRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="min-h-9 rounded-lg border border-ronda-border bg-white px-3 text-sm font-semibold text-ronda-coffee transition hover:bg-ronda-bg"
+      >
+        Añadir persona
+      </button>
+
+      {open ? (
+        <div className="absolute right-0 top-full z-40 mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-ronda-border bg-white shadow-xl">
+          <div className="p-2">
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (showCreate) handleCreate();
+                  else if (filtered.length === 1) onSelect(filtered[0]);
+                }
+                if (event.key === 'Escape') onToggle();
+              }}
+              placeholder="Buscar persona..."
+              className="w-full rounded-lg border border-ronda-border bg-ronda-bg px-3 py-2 text-sm font-medium text-ronda-text outline-none transition placeholder:text-ronda-muted/60 focus:border-ronda-gold focus:ring-2 focus:ring-ronda-gold"
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto py-1">
+            {filtered.slice(0, 12).map((person) => (
+              <button
+                key={person.id}
+                type="button"
+                onClick={() => onSelect(person)}
+                className="grid w-full gap-0.5 px-3 py-2.5 text-left transition hover:bg-ronda-bg"
+              >
+                <span className="text-sm font-semibold text-ronda-text">{person.name}</span>
+                <span className="truncate text-xs text-ronda-muted">
+                  {[person.role, person.phone, person.email, person.linkedEntity].filter(Boolean).join(' · ') || 'Sin datos de contacto'}
+                </span>
+              </button>
+            ))}
+            {showCreate ? (
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="w-full bg-ronda-bg px-3 py-2.5 text-left text-sm font-semibold text-ronda-coffee ring-1 ring-inset ring-ronda-gold/40 transition hover:bg-ronda-surface-soft"
+              >
+                Crear persona "{search.trim()}"
+              </button>
+            ) : null}
+            {!showCreate && filtered.length === 0 ? (
+              <p className="px-3 py-3 text-sm text-ronda-muted">No hay personas disponibles.</p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function LocalPersonCard({ person, onRemove }: { person: LocalPersonDraft; onRemove: () => void }) {
+  const name = personName(person) || 'Persona sin nombre';
+  const detailItems = [
+    person.phone,
+    person.email,
+    person.socialLinks,
+    person.workingHours,
+    person.commercialRelation,
+  ].filter(Boolean);
+
+  return (
+    <article className="rounded-xl border border-ronda-border bg-ronda-bg px-4 py-3 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-ronda-text">{name}</p>
+          {person.role ? (
+            <span className="mt-1 inline-flex rounded-full border border-ronda-gold/40 bg-white px-2 py-0.5 text-xs font-semibold text-ronda-coffee">
+              {person.role}
+            </span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded-md px-2 py-1 text-xs font-semibold text-ronda-muted transition hover:bg-white hover:text-ronda-error"
+        >
+          Quitar
+        </button>
+      </div>
+
+      {detailItems.length > 0 ? (
+        <div className="mt-3 grid gap-1 text-sm text-ronda-muted">
+          {detailItems.map((item) => (
+            <p key={item} className="truncate">{item}</p>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-ronda-muted">Sin datos adicionales.</p>
+      )}
+    </article>
   );
 }
 
