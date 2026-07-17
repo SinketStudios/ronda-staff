@@ -13,7 +13,7 @@ import {
 } from '@/lib/api';
 import { useDashboard } from '../DashboardContext';
 
-type ContactDetailSelection =
+export type ContactDetailSelection =
   | { type: 'contact'; item: StaffCommercialContact }
   | { type: 'person'; item: StaffContactPersonListItem };
 
@@ -148,12 +148,24 @@ function notifyContactsUpdated() {
   window.dispatchEvent(new Event('ronda:contacts-updated'));
 }
 
-export function ContactDetailSidebar({ selection, onClose }: { selection: ContactDetailSelection; onClose: () => void }) {
+export function ContactDetailSidebar({
+  selection,
+  onClose,
+  defaultEditing = false,
+  onContactUpdated,
+  onPersonUpdated,
+}: {
+  selection: ContactDetailSelection;
+  onClose: () => void;
+  defaultEditing?: boolean;
+  onContactUpdated?: (contact: StaffCommercialContact) => void;
+  onPersonUpdated?: (person: StaffContactPersonListItem) => void;
+}) {
   const { setSelectedContact, setSelectedContactPerson } = useDashboard();
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(defaultEditing);
   const [error, setError] = useState('');
   const isContact = selection.type === 'contact';
   const title = isContact ? selection.item.restaurantName : selection.item.name;
@@ -161,11 +173,11 @@ export function ContactDetailSidebar({ selection, onClose }: { selection: Contac
   const [personDraft, setPersonDraft] = useState<PersonEditDraft | null>(() => (!isContact ? makePersonDraft(selection.item) : null));
 
   useEffect(() => {
-    setEditing(false);
+    setEditing(defaultEditing);
     setError('');
     setContactDraft(selection.type === 'contact' ? makeContactDraft(selection.item) : null);
     setPersonDraft(selection.type === 'person' ? makePersonDraft(selection.item) : null);
-  }, [selection]);
+  }, [defaultEditing, selection]);
 
   const hasChanges = useMemo(() => {
     if (selection.type === 'contact' && contactDraft) {
@@ -234,6 +246,7 @@ export function ContactDetailSidebar({ selection, onClose }: { selection: Contac
         });
 
         setSelectedContact(updated);
+        onContactUpdated?.(updated);
         setContactDraft(makeContactDraft(updated));
       }
 
@@ -256,7 +269,9 @@ export function ContactDetailSidebar({ selection, onClose }: { selection: Contac
           phone: updated.phone ?? '',
           email: updated.email ?? '',
         });
-        setPersonDraft(makePersonDraft({ ...selection.item, name: updated.name, role: updated.role ?? '', phone: updated.phone ?? '', email: updated.email ?? '' }));
+        const nextPerson = { ...selection.item, name: updated.name, role: updated.role ?? '', phone: updated.phone ?? '', email: updated.email ?? '' };
+        onPersonUpdated?.(nextPerson);
+        setPersonDraft(makePersonDraft(nextPerson));
       }
 
       setEditing(false);

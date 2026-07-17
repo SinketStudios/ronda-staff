@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { getStaffClients } from '@/lib/api';
+import { getStaffClients, getStaffContacts, type StaffCommercialContact } from '@/lib/api';
+import { ContactDetailSidebar } from '../contacts/ContactDetailSidebar';
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from 'geojson';
 import type { LatLngBoundsExpression, LayerGroup, Map as LeafletMap } from 'leaflet';
-import { Search } from 'lucide-react';
+import { Building2, MapPin, Pencil, Search } from 'lucide-react';
 import type { Topology } from 'topojson-specification';
 import { feature as topojsonFeature } from 'topojson-client';
 
@@ -17,6 +18,11 @@ const softSpainBounds: LatLngBoundsExpression = [
 const geocodeCachePrefix = 'ronda-sales-map-geocode:v1:';
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const accountPinColors = {
+  contact: '#94a3b8',
+  contactLow: '#C8B27A',
+  contactInteresting: '#B98A41',
+  contactHigh: '#B9653B',
+  contactExcellent: '#3F7A56',
   real: '#6f4a2f',
   demo: '#2563eb',
   trial: '#7c3aed',
@@ -35,7 +41,7 @@ type RestaurantMarker = {
   accountKind: AccountKind;
 };
 
-type RestaurantSearchItem = Omit<RestaurantMarker, 'lat' | 'lng'>;
+type RestaurantSearchItem = Omit<RestaurantMarker, 'lat' | 'lng'> & { lat?: number; lng?: number };
 
 type SearchResult = {
   id: string;
@@ -88,6 +94,14 @@ function getAccountKind(clientSubscription?: AccountSubscription | null, restaur
   if (status.includes('trial')) return 'trial';
   if (planId === 'demo') return 'demo';
   return 'real';
+}
+
+function getContactAccountKind(score: number, hasEvaluation: boolean): AccountKind {
+  if (!hasEvaluation) return 'contact';
+  if (score >= 23) return 'contactExcellent';
+  if (score >= 16) return 'contactHigh';
+  if (score >= 9) return 'contactInteresting';
+  return 'contactLow';
 }
 
 async function loadTopoJsonFeatureCollection(path: string, objectName: string) {
@@ -312,6 +326,100 @@ function buildRestaurantSearchResult(marker: RestaurantSearchItem & { lat?: numb
   };
 }
 
+function getMarkerKindLabel(accountKind: AccountKind) {
+  if (accountKind === 'real') return 'Cliente real';
+  if (accountKind === 'demo') return 'Demo';
+  if (accountKind === 'trial') return 'Demo activa';
+  if (accountKind === 'contact') return 'Contacto sin evaluar';
+  if (accountKind === 'contactLow') return 'Baja prioridad';
+  if (accountKind === 'contactInteresting') return 'Oportunidad interesante';
+  if (accountKind === 'contactHigh') return 'Alta prioridad';
+  return 'Oportunidad excelente';
+}
+
+function getContactIdFromMarker(marker: RestaurantMarker) {
+  return marker.id.startsWith('contact:') ? marker.id.slice('contact:'.length) : null;
+}
+
+function SelectedPlaceCard({
+  marker,
+  onClose,
+  onEdit,
+  onInteract,
+}: {
+  marker: RestaurantMarker;
+  onClose: () => void;
+  onEdit?: () => void;
+  onInteract: () => void;
+}) {
+  const markerColor = accountPinColors[marker.accountKind];
+
+  return (
+    <div
+      className="mt-2 overflow-hidden rounded-2xl border border-ronda-border bg-white shadow-[0_16px_40px_rgba(15,23,42,0.18)]"
+      onMouseDown={(event) => {
+        event.preventDefault();
+        onInteract();
+      }}
+    >
+      <div className="flex items-center justify-between gap-3 px-4 pt-4">
+        <span
+          className="inline-flex max-w-[calc(100%-2.5rem)] items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold"
+          style={{ borderColor: markerColor, color: markerColor, backgroundColor: `${markerColor}14` }}
+        >
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: markerColor }} />
+          <span className="truncate">{getMarkerKindLabel(marker.accountKind)}</span>
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="pointer-events-auto rounded-full p-1.5 text-ronda-muted transition hover:bg-ronda-bg hover:text-ronda-text"
+          aria-label="Cerrar ficha"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div className="px-4 pb-4 pt-3">
+        <h2 className="truncate text-xl font-extrabold tracking-tight text-ronda-text">{marker.restaurantName}</h2>
+
+        <div className="mt-3 grid gap-2.5 text-sm">
+          <div className="flex gap-2.5">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-ronda-muted" />
+            <div className="min-w-0">
+              <p className="font-semibold leading-5 text-ronda-text">{marker.address}</p>
+              <p className="mt-0.5 text-xs font-medium text-ronda-muted">{marker.city}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <Building2 className="h-4 w-4 shrink-0 text-ronda-muted" />
+            <p className="truncate text-sm font-semibold text-ronda-muted">{marker.clientName}</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onEdit}
+          disabled={!onEdit}
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-ronda-border bg-white px-4 py-2.5 text-sm font-bold text-ronda-text shadow-sm transition hover:border-ronda-secondary hover:text-ronda-secondary"
+        >
+          <Pencil className="h-4 w-4" />
+          Editar
+        </button>
+        {marker.accountKind === 'contact' ? (
+          <button
+            type="button"
+            className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-ronda-secondary px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-ronda-secondary/90"
+          >
+            Evaluar
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -327,11 +435,15 @@ function escapeHtml(value: string) {
 
 export function SalesMapClient() {
   const mapNodeRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersLayerRef = useRef<LayerGroup | null>(null);
   const searchLayerRef = useRef<LayerGroup | null>(null);
+  const renderMarkerLayerRef = useRef<(() => void) | null>(null);
+  const selectedMarkerIdRef = useRef<string | null>(null);
   const markerDataRef = useRef<RestaurantMarker[]>([]);
   const restaurantSearchRef = useRef<RestaurantSearchItem[]>([]);
+  const contactsByIdRef = useRef<Map<string, StaffCommercialContact>>(new Map());
   const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
@@ -340,6 +452,8 @@ export function SalesMapClient() {
   const [isPredicting, setIsPredicting] = useState(false);
   const [predictionStatus, setPredictionStatus] = useState('');
   const [areSuggestionsOpen, setAreSuggestionsOpen] = useState(false);
+  const [selectedMarker, setSelectedMarker] = useState<RestaurantMarker | null>(null);
+  const [editingMapContact, setEditingMapContact] = useState<StaffCommercialContact | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -381,12 +495,12 @@ export function SalesMapClient() {
           return;
         }
 
-        const createPinIcon = (accountKind: AccountKind) =>
+        const createPinIcon = (accountKind: AccountKind, selected: boolean) =>
           L.divIcon({
             className: 'sales-map-client-pin-wrapper',
             html: `
-            <svg class="sales-map-client-pin" viewBox="0 0 36 48" aria-hidden="true">
-              <path style="fill: ${accountPinColors[accountKind]}" d="M18 46C15.4 42.1 5 29.4 5 17.4C5 9.7 10.8 3.5 18 3.5s13 6.2 13 13.9C31 29.4 20.6 42.1 18 46Z" />
+            <svg class="sales-map-client-pin" style="${selected ? 'transform: scale(1.12); filter: drop-shadow(0 10px 18px rgba(36,22,12,0.4));' : ''}" viewBox="0 0 36 48" aria-hidden="true">
+              <path style="fill: ${accountPinColors[accountKind]}; stroke: ${selected ? '#c9a96e' : '#ffffff'}; stroke-width: ${selected ? 4.2 : 2.5};" d="M18 46C15.4 42.1 5 29.4 5 17.4C5 9.7 10.8 3.5 18 3.5s13 6.2 13 13.9C31 29.4 20.6 42.1 18 46Z" />
               <text x="18" y="18.2" text-anchor="middle">R</text>
             </svg>
           `,
@@ -422,12 +536,33 @@ export function SalesMapClient() {
         markersLayerRef.current = markerLayer;
         searchLayerRef.current = L.layerGroup().addTo(map);
 
+        const clearSelectedMarker = () => {
+          selectedMarkerIdRef.current = null;
+          setSelectedMarker(null);
+          setAreSuggestionsOpen(false);
+          searchInputRef.current?.blur();
+          renderMarkerLayerRef.current?.();
+        };
+
         const addRestaurantMarker = (marker: RestaurantMarker) =>
-          L.marker([marker.lat, marker.lng], { icon: createPinIcon(marker.accountKind) })
-            .bindPopup(
-              `<strong>${escapeHtml(marker.restaurantName)}</strong><br>${escapeHtml(marker.clientName)}<br>${escapeHtml(marker.address)}<br>${escapeHtml(marker.city)}`,
-              { className: 'sales-map-client-popup' },
-            )
+          L.marker([marker.lat, marker.lng], { icon: createPinIcon(marker.accountKind, selectedMarkerIdRef.current === marker.id) })
+            .on('click', (event) => {
+              L.DomEvent.stopPropagation(event);
+              selectedMarkerIdRef.current = marker.id;
+              setSelectedMarker(marker);
+              setSearchQuery(marker.restaurantName);
+              setSearchStatus('');
+              setPredictionStatus('');
+              setSearchResults([]);
+              setAreSuggestionsOpen(false);
+              searchInputRef.current?.blur();
+              map.flyTo([marker.lat, marker.lng], map.getMaxZoom(), {
+                animate: true,
+                duration: 0.9,
+                easeLinearity: 0.25,
+              });
+              renderMarkerLayerRef.current?.();
+            })
             .addTo(markerLayer);
 
         const renderMarkerLayer = () => {
@@ -453,7 +588,8 @@ export function SalesMapClient() {
               const lng = bucket.reduce((sum, marker) => sum + marker.lng, 0) / bucket.length;
               L.marker([lat, lng], { icon: createClusterIcon(bucket.length) })
                 .bindPopup(`${bucket.length} locales en ${escapeHtml(communityName)}`, { className: 'sales-map-client-popup' })
-                .on('click', () => {
+                .on('click', (event) => {
+                  L.DomEvent.stopPropagation(event);
                   map.setView([lat, lng], Math.min(8, map.getMaxZoom()), { animate: true });
                 })
                 .addTo(markerLayer);
@@ -487,18 +623,22 @@ export function SalesMapClient() {
             const lng = bucket.reduce((sum, marker) => sum + marker.lng, 0) / bucket.length;
             L.marker([lat, lng], { icon: createClusterIcon(bucket.length) })
               .bindPopup(`${bucket.length} locales agrupados`, { className: 'sales-map-client-popup' })
-              .on('click', () => {
+              .on('click', (event) => {
+                L.DomEvent.stopPropagation(event);
                 map.setView([lat, lng], Math.min(map.getZoom() + 2, map.getMaxZoom()), { animate: true });
               })
               .addTo(markerLayer);
           });
         };
+        renderMarkerLayerRef.current = renderMarkerLayer;
 
         map.on('zoomend moveend', renderMarkerLayer);
+        map.on('click', clearSelectedMarker);
 
-        getStaffClients()
-          .then(async (clients) => {
-            const restaurants = clients.flatMap((client) =>
+        Promise.all([getStaffClients(), getStaffContacts()])
+          .then(async ([clients, contacts]) => {
+            contactsByIdRef.current = new Map(contacts.map((contact) => [contact.id, contact]));
+            const restaurants: RestaurantSearchItem[] = clients.flatMap((client) =>
               (client.restaurants ?? [])
                 .filter((restaurant) => restaurant.address && restaurant.city)
                 .map((restaurant) => ({
@@ -510,12 +650,30 @@ export function SalesMapClient() {
                   accountKind: getAccountKind(client.subscription, restaurant.subscription),
                 })),
             );
-            restaurantSearchRef.current = restaurants;
+
+            const commercialContacts: RestaurantSearchItem[] = contacts
+              .filter((contact) => contact.address && (contact.city || contact.province))
+              .map((contact) => ({
+                id: `contact:${contact.id}`,
+                clientName: 'Contacto comercial',
+                restaurantName: contact.restaurantName,
+                address: contact.address,
+                city: contact.city || contact.province,
+                lat: contact.lat ?? undefined,
+                lng: contact.lng ?? undefined,
+                accountKind: getContactAccountKind(contact.potential, Boolean(contact.evaluation)),
+              }));
+
+            const locations = [...restaurants, ...commercialContacts];
+            restaurantSearchRef.current = locations;
             const markers: RestaurantMarker[] = [];
 
-            for (const restaurant of restaurants) {
+            for (const restaurant of locations) {
               if (disposed) return;
-              const coordinates = await geocodeAddress(restaurant.address, restaurant.city);
+              const coordinates =
+                typeof restaurant.lat === 'number' && typeof restaurant.lng === 'number'
+                  ? { lat: restaurant.lat, lng: restaurant.lng, cached: true }
+                  : await geocodeAddress(restaurant.address, restaurant.city);
               if (coordinates) {
                 const marker = { ...restaurant, ...coordinates };
                 markers.push(marker);
@@ -537,8 +695,11 @@ export function SalesMapClient() {
 
     return () => {
       disposed = true;
+      renderMarkerLayerRef.current = null;
+      selectedMarkerIdRef.current = null;
       markerDataRef.current = [];
       restaurantSearchRef.current = [];
+      contactsByIdRef.current = new Map();
       searchLayerRef.current?.remove();
       searchLayerRef.current = null;
       markersLayerRef.current?.remove();
@@ -620,6 +781,20 @@ export function SalesMapClient() {
     const searchLayer = searchLayerRef.current;
     if (!map || !searchLayer) return;
 
+    if (resolvedResult.provider === 'restaurant') {
+      const marker = markerDataRef.current.find((item) => `restaurant:${item.id}` === resolvedResult.id);
+      if (marker) {
+        selectedMarkerIdRef.current = marker.id;
+        setSelectedMarker(marker);
+        searchInputRef.current?.blur();
+        renderMarkerLayerRef.current?.();
+      }
+    } else {
+      selectedMarkerIdRef.current = null;
+      setSelectedMarker(null);
+      renderMarkerLayerRef.current?.();
+    }
+
     const searchIcon = L.divIcon({
       className: 'sales-map-search-pin-wrapper',
       html: `
@@ -638,7 +813,11 @@ export function SalesMapClient() {
       .bindPopup(resolvedResult.popupHtml, { className: 'sales-map-client-popup' })
       .addTo(searchLayer)
       .openPopup();
-    map.setView([resolvedResult.lat, resolvedResult.lng], map.getMaxZoom(), { animate: true });
+    map.flyTo([resolvedResult.lat, resolvedResult.lng], map.getMaxZoom(), {
+      animate: true,
+      duration: 0.9,
+      easeLinearity: 0.25,
+    });
     setSearchStatus(resolvedResult.label);
     setSearchResults([]);
     setAreSuggestionsOpen(false);
@@ -696,6 +875,64 @@ export function SalesMapClient() {
     }
   };
 
+  const openContactEditor = (marker: RestaurantMarker) => {
+    const contactId = getContactIdFromMarker(marker);
+    if (!contactId) return;
+
+    const contact = contactsByIdRef.current.get(contactId);
+    if (!contact) return;
+
+    setEditingMapContact(contact);
+  };
+
+  const handleMapContactUpdated = (contact: StaffCommercialContact) => {
+    contactsByIdRef.current = new Map(contactsByIdRef.current).set(contact.id, contact);
+
+    const nextItem: RestaurantSearchItem = {
+      id: `contact:${contact.id}`,
+      clientName: 'Contacto comercial',
+      restaurantName: contact.restaurantName,
+      address: contact.address,
+      city: contact.city || contact.province,
+      lat: contact.lat ?? undefined,
+      lng: contact.lng ?? undefined,
+      accountKind: getContactAccountKind(contact.potential, Boolean(contact.evaluation)),
+    };
+
+    restaurantSearchRef.current = restaurantSearchRef.current.map((item) => (item.id === nextItem.id ? nextItem : item));
+    markerDataRef.current = markerDataRef.current.map((marker) =>
+      marker.id === nextItem.id
+        ? {
+            ...marker,
+            clientName: nextItem.clientName,
+            restaurantName: nextItem.restaurantName,
+            address: nextItem.address,
+            city: nextItem.city,
+            accountKind: nextItem.accountKind,
+            lat: nextItem.lat ?? marker.lat,
+            lng: nextItem.lng ?? marker.lng,
+          }
+        : marker,
+    );
+
+    setEditingMapContact(contact);
+    setSelectedMarker((current) => {
+      if (!current || current.id !== nextItem.id) return current;
+      return {
+        ...current,
+        clientName: nextItem.clientName,
+        restaurantName: nextItem.restaurantName,
+        address: nextItem.address,
+        city: nextItem.city,
+        accountKind: nextItem.accountKind,
+        lat: nextItem.lat ?? current.lat,
+        lng: nextItem.lng ?? current.lng,
+      };
+    });
+    setSearchQuery((current) => (selectedMarkerIdRef.current === nextItem.id ? contact.restaurantName : current));
+    renderMarkerLayerRef.current?.();
+  };
+
   return (
     <div className="-m-4 h-[calc(100%+2rem)] min-h-0 overflow-hidden sm:-m-6 sm:h-[calc(100%+3rem)] lg:-m-8 lg:h-[calc(100%+4rem)]">
       <section className="relative h-full min-h-0 overflow-hidden bg-ronda-bg">
@@ -713,6 +950,7 @@ export function SalesMapClient() {
                 R
               </span>
               <input
+                ref={searchInputRef}
                 value={searchQuery}
                 onChange={(event) => {
                   setSearchQuery(event.target.value);
@@ -736,7 +974,6 @@ export function SalesMapClient() {
                 <Search className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
-            {searchStatus ? <p className="mt-2 px-1 text-xs font-semibold text-ronda-muted">{searchStatus}</p> : null}
             {areSuggestionsOpen && searchQuery.trim().length >= 3 && (isPredicting || predictionStatus || searchResults.length > 0) ? (
               <div className="mt-2 max-h-72 overflow-y-auto rounded-md border border-ronda-border bg-ronda-surface shadow-lg">
                 {isPredicting || predictionStatus ? (
@@ -763,34 +1000,62 @@ export function SalesMapClient() {
                 ))}
               </div>
             ) : null}
+            {selectedMarker && !areSuggestionsOpen ? (
+              <SelectedPlaceCard
+                marker={selectedMarker}
+                onInteract={() => searchInputRef.current?.blur()}
+                onEdit={getContactIdFromMarker(selectedMarker) ? () => openContactEditor(selectedMarker) : undefined}
+                onClose={() => {
+                  selectedMarkerIdRef.current = null;
+                  setSelectedMarker(null);
+                  renderMarkerLayerRef.current?.();
+                }}
+              />
+            ) : null}
           </form>
-          <div className="pointer-events-none absolute bottom-7 left-1/2 z-[1000] w-[min(34rem,calc(100%-2.5rem))] -translate-x-1/2 rounded-xl border border-ronda-border bg-ronda-surface/95 p-3 shadow-lg backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-ronda-muted">Mapa de calor</p>
-                <p className="mt-0.5 text-xs font-semibold text-ronda-text">Potencial comercial</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3 text-[11px] font-semibold text-ronda-muted">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: accountPinColors.real }} />
-                  Real
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: accountPinColors.demo }} />
-                  Demo
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: accountPinColors.trial }} />
-                  Demo activa
-                </span>
+          <div className="pointer-events-none absolute right-5 top-5 z-[1000] grid gap-2">
+            <div className="rounded-xl border border-ronda-border/60 bg-ronda-surface/80 px-2.5 py-2 shadow-md backdrop-blur">
+              <div className="grid gap-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ronda-muted">Calor</p>
+                <div className="grid grid-cols-[0.45rem_1fr] gap-1.5">
+                <div className="grid overflow-hidden rounded-full shadow-sm">
+                  {[
+                    accountPinColors.contact,
+                    accountPinColors.contactLow,
+                    accountPinColors.contactInteresting,
+                    accountPinColors.contactHigh,
+                    accountPinColors.contactExcellent,
+                  ].map((color) => (
+                    <span key={color} className="h-3" style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+                <div className="grid text-[10px] font-semibold leading-3 text-ronda-muted">
+                  <span>Sin eval.</span>
+                  <span>Baja</span>
+                  <span>Media</span>
+                  <span>Alta</span>
+                  <span>Top</span>
+                </div>
+                </div>
               </div>
             </div>
-            <div className="mt-3 h-2 rounded-full bg-gradient-to-r from-slate-300 via-amber-400 via-orange-500 to-emerald-500" />
-            <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-ronda-muted">
-              <span>Contacto</span>
-              <span>Conversacion</span>
-              <span>Reunion</span>
-              <span>Alta posibilidad</span>
+
+            <div className="rounded-xl border border-ronda-border/60 bg-ronda-surface/80 px-2.5 py-2 shadow-md backdrop-blur">
+              <div className="grid gap-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ronda-muted">Clientes</p>
+                <div className="grid grid-cols-[0.45rem_1fr] gap-1.5">
+                <div className="grid overflow-hidden rounded-full shadow-sm">
+                  {[accountPinColors.real, accountPinColors.trial, accountPinColors.demo].map((color) => (
+                    <span key={color} className="h-3" style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+                <div className="grid text-[10px] font-semibold leading-3 text-ronda-muted">
+                  <span>Real</span>
+                  <span>Activa</span>
+                  <span>Demo</span>
+                </div>
+                </div>
+              </div>
             </div>
           </div>
           <div ref={mapNodeRef} className="absolute inset-0" />
@@ -800,6 +1065,16 @@ export function SalesMapClient() {
                 <h2 className="text-lg font-semibold text-ronda-text">No se ha podido cargar el mapa</h2>
                 <p className="mt-2 text-sm text-ronda-muted">{loadError}</p>
               </div>
+            </div>
+          ) : null}
+          {editingMapContact ? (
+            <div className="absolute inset-0 z-[1400] flex justify-end bg-ronda-text/10 backdrop-blur-[1px] sm:left-auto sm:w-[26rem]">
+              <ContactDetailSidebar
+                selection={{ type: 'contact', item: editingMapContact }}
+                defaultEditing
+                onContactUpdated={handleMapContactUpdated}
+                onClose={() => setEditingMapContact(null)}
+              />
             </div>
           ) : null}
         </div>

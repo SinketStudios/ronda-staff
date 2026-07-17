@@ -565,7 +565,7 @@ export function ContactsPageClient() {
 
         <section className="hidden min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface lg:flex">
           <div className="grid shrink-0 grid-cols-[44px_1.1fr_1fr_1.1fr_0.8fr_0.8fr_0.8fr_86px] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
-            <span className="sr-only">Seleccionar</span>
+            <span aria-hidden="true" />
             <span>Local</span>
             <span>Contacto</span>
             <span>Ubicación</span>
@@ -804,7 +804,7 @@ export function ContactsPageClient() {
 
             <section className="hidden min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-ronda-border bg-ronda-surface lg:flex">
               <div className="grid shrink-0 grid-cols-[44px_1.1fr_0.9fr_1fr_1fr_0.8fr_0.8fr_86px] gap-4 border-b border-ronda-border bg-ronda-surface-soft px-4 py-3 text-xs font-semibold uppercase text-ronda-muted">
-                <span className="sr-only">Seleccionar</span>
+                <span aria-hidden="true" />
                 <span>Persona</span>
                 <span>Cargo</span>
                 <span>Datos</span>
