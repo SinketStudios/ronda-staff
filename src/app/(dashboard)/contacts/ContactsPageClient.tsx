@@ -448,7 +448,7 @@ export function ContactsPageClient() {
   }
 
   return (
-    <div className="flex min-h-full flex-col gap-5 lg:h-full lg:overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden sm:gap-5">
       <header className="shrink-0">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-ronda-text sm:text-3xl">Contactos</h1>
@@ -457,7 +457,7 @@ export function ContactsPageClient() {
       </header>
 
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="inline-flex rounded-full border border-ronda-border bg-ronda-surface p-1 shadow-sm">
+        <div className="grid grid-cols-2 rounded-full border border-ronda-border bg-ronda-surface p-1 shadow-sm sm:inline-flex">
         {[
           { id: 'entities' as const, label: 'Locales', count: contacts.length },
           { id: 'people' as const, label: 'Personas', count: people.length },
@@ -469,7 +469,7 @@ export function ContactsPageClient() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex min-h-9 items-center rounded-full px-4 text-sm font-semibold transition ${
+              className={`flex min-h-9 items-center justify-center rounded-full px-3 text-sm font-semibold transition sm:justify-start sm:px-4 ${
                 active
                   ? 'bg-ronda-coffee text-white shadow-sm'
                   : 'text-ronda-muted hover:bg-ronda-bg hover:text-ronda-coffee'
@@ -489,7 +489,7 @@ export function ContactsPageClient() {
             if (activeTab === 'entities') setCreateLocalOpen(true);
             else setCreatePersonOpen(true);
           }}
-          className="min-h-10 rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark sm:shrink-0"
+          className="min-h-10 w-full rounded-lg bg-ronda-coffee px-4 text-sm font-semibold text-white transition hover:bg-ronda-gold-dark sm:w-auto sm:shrink-0"
         >
           {activeTab === 'entities' ? 'Añadir local' : 'Añadir persona'}
         </button>
@@ -507,7 +507,7 @@ export function ContactsPageClient() {
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-0.5 lg:overflow-hidden lg:pr-0">
         {activeTab === 'entities' ? (
           <>
         <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
@@ -554,8 +554,8 @@ export function ContactsPageClient() {
         </div>
 
         {!isLoadingContacts && pageItems.length > 0 ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-ronda-border bg-ronda-surface px-4 py-3 text-sm">
-            <label className="flex items-center gap-2 font-semibold text-ronda-text">
+          <div className="grid shrink-0 gap-3 rounded-lg border border-ronda-border bg-ronda-surface px-4 py-3 text-sm sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+            <label className="flex min-w-0 items-center gap-2 font-semibold text-ronda-text">
               <input
                 type="checkbox"
                 checked={allPageContactsSelected}
@@ -568,7 +568,7 @@ export function ContactsPageClient() {
               type="button"
               disabled={selectedContactIds.length === 0 || isDeleting}
               onClick={() => void deleteContactsByIds(selectedContactIds)}
-              className="min-h-9 rounded-lg border border-ronda-error/30 bg-red-50 px-3 font-semibold text-ronda-error transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-h-9 w-full rounded-lg border border-ronda-error/30 bg-red-50 px-3 font-semibold text-ronda-error transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
             >
               {isDeleting ? 'Eliminando...' : 'Eliminar seleccionados'}
             </button>
@@ -679,7 +679,7 @@ export function ContactsPageClient() {
             </div>
           ) : (
             pageItems.map((contact) => (
-              <div key={contact.id} className="rounded-lg border border-ronda-border bg-ronda-surface p-4 shadow-sm">
+              <div key={contact.id} className="min-w-0 rounded-lg border border-ronda-border bg-ronda-surface p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <input
                     type="checkbox"
@@ -687,7 +687,7 @@ export function ContactsPageClient() {
                     onChange={() => toggleContactSelection(contact.id)}
                     className="mt-1 h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
                   />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -702,7 +702,7 @@ export function ContactsPageClient() {
                     </button>
                     <p className="mt-1 truncate text-xs text-ronda-muted">{contact.address || contact.city || 'Sin ubicación'}</p>
                   </div>
-                  <span className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${stageData[contact.stage].className}`}>
+                  <span className={`max-w-[42vw] shrink-0 truncate rounded-lg px-2.5 py-1 text-xs font-semibold ${stageData[contact.stage].className}`}>
                     {stageData[contact.stage].label}
                   </span>
                 </div>
@@ -713,7 +713,7 @@ export function ContactsPageClient() {
                 <button
                   type="button"
                   onClick={() => void deleteContactsByIds([contact.id])}
-                  className="mt-3 min-h-9 rounded-lg border border-ronda-error/30 bg-red-50 px-3 text-sm font-semibold text-ronda-error"
+                  className="mt-3 min-h-9 w-full rounded-lg border border-ronda-error/30 bg-red-50 px-3 text-sm font-semibold text-ronda-error sm:w-auto"
                 >
                   Eliminar
                 </button>
@@ -793,8 +793,8 @@ export function ContactsPageClient() {
             </div>
 
             {peoplePageItems.length > 0 ? (
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-ronda-border bg-ronda-surface px-4 py-3 text-sm">
-                <label className="flex items-center gap-2 font-semibold text-ronda-text">
+              <div className="grid shrink-0 gap-3 rounded-lg border border-ronda-border bg-ronda-surface px-4 py-3 text-sm sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+                <label className="flex min-w-0 items-center gap-2 font-semibold text-ronda-text">
                   <input
                     type="checkbox"
                     checked={allPagePeopleSelected}
@@ -807,7 +807,7 @@ export function ContactsPageClient() {
                   type="button"
                   disabled={selectedPersonIds.length === 0 || isDeleting}
                   onClick={() => void deletePeopleByIds(selectedPersonIds)}
-                  className="min-h-9 rounded-lg border border-ronda-error/30 bg-red-50 px-3 font-semibold text-ronda-error transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="min-h-9 w-full rounded-lg border border-ronda-error/30 bg-red-50 px-3 font-semibold text-ronda-error transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                 >
                   {isDeleting ? 'Eliminando...' : 'Eliminar seleccionadas'}
                 </button>
@@ -905,7 +905,7 @@ export function ContactsPageClient() {
                 </div>
               ) : (
                 peoplePageItems.map((person) => (
-                  <div key={person.id} className="rounded-lg border border-ronda-border bg-ronda-surface p-4 shadow-sm">
+                  <div key={person.id} className="min-w-0 rounded-lg border border-ronda-border bg-ronda-surface p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <input
                         type="checkbox"
@@ -913,7 +913,7 @@ export function ContactsPageClient() {
                         onChange={() => togglePersonSelection(person.id)}
                         className="mt-1 h-4 w-4 rounded border-ronda-border accent-ronda-coffee"
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <button
                           type="button"
                           onClick={() => {
@@ -928,7 +928,7 @@ export function ContactsPageClient() {
                         </button>
                         <p className="mt-1 truncate text-xs text-ronda-muted">{person.role || person.linkedEntity || 'Sin cargo'}</p>
                       </div>
-                      <span className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${stageData[person.stage].className}`}>
+                      <span className={`max-w-[42vw] shrink-0 truncate rounded-lg px-2.5 py-1 text-xs font-semibold ${stageData[person.stage].className}`}>
                         {stageData[person.stage].label}
                       </span>
                     </div>
@@ -939,7 +939,7 @@ export function ContactsPageClient() {
                     <button
                       type="button"
                       onClick={() => void deletePeopleByIds([person.id])}
-                      className="mt-3 min-h-9 rounded-lg border border-ronda-error/30 bg-red-50 px-3 text-sm font-semibold text-ronda-error"
+                      className="mt-3 min-h-9 w-full rounded-lg border border-ronda-error/30 bg-red-50 px-3 text-sm font-semibold text-ronda-error sm:w-auto"
                     >
                       Eliminar
                     </button>
